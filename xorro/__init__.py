@@ -15,6 +15,54 @@ import sys as _sys
 import clingo as _clingo
 from textwrap import fill as _fill
 
+class DummyContext:
+    def domain2(self):
+        return []
+
+    def domain3(self):
+        return []
+g_dummy_ctx = DummyContext()
+
+def add_domain(prg):
+    """
+    Adds the domain for the __parity atoms to the program.
+    """
+    class Context:
+        def __init__(self):
+            self._domain2 = []
+            self._domain3 = []
+
+        def domain2(self):
+            return self._domain2
+
+        def domain3(self):
+            return self._domain3
+
+    ctx = Context()
+
+    for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
+        ctx._domain2.append(_clingo.Tuple(atom.symbol.arguments))
+    for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 3):
+        ctx._domain3.append(_clingo.Tuple(atom.symbol.arguments))
+
+    prg.add("__domain", [], _fill("""\
+        {name}_dom(Id,Type) :- (Id,Type) = @domain2().
+        {name}_dom(Id,Type,Tuple) :- (Id,Type,Tuple) = @domain3().
+        """.format(name=_tf.g_aux_name)))
+
+    prg.ground([("__domain", [])], ctx)
+
+def translate(mode, prg):
+    if mode == "count":
+        add_domain(prg)
+        prg.add("__count", [], _fill("""\
+            :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
+            :- { __parity(ID,odd ,X) } = N, N\\2!=1, __parity(ID,odd).
+            """))
+        prg.ground([("__count", [])], g_dummy_ctx)
+    else:
+        raise RuntimeError("unknow transformation mode: {}".format(mode))
+
 class Application:
     """
     Application object as accepted by clingo.clingo_main().
@@ -38,34 +86,6 @@ class Application:
 
         """
 
-    def __add_domain(self, prg):
-        """
-        Adds the domain for the __parity atoms to the program.
-        """
-        class Context:
-            def __init__(self):
-                self._domain2 = []
-                self._domain3 = []
-
-            def domain2(self):
-                return self._domain2
-
-            def domain3(self):
-                return self._domain3
-
-        ctx = Context()
-
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
-            ctx._domain2.append(_clingo.Tuple(atom.symbol.arguments))
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 3):
-            ctx._domain3.append(_clingo.Tuple(atom.symbol.arguments))
-        prg.add("__domain", [], _fill("""\
-            {name}_dom(Id,Type) :- (Id,Type) = @domain2().
-            {name}_dom(Id,Type,Tuple) :- (Id,Type,Tuple) = @domain3().
-            """.format(name=_tf.g_aux_name)))
-
-        prg.ground([("__domain", [])], ctx)
-
     def main(self, prg, files):
         """
         Implements the rewriting and solving loop.
@@ -76,14 +96,11 @@ class Application:
                 files.append(_sys.stdin)
             _tf.transform((f.read() for f in files), b.add)
 
-        prg.ground([("base", [])])
-        self.__add_domain(prg)
-        
-        # TODO: add and ground additional program parts here ...
-        prg.load("examples/count.lp")
+
         prg.ground([("base", [])])
 
-        ## Solve
+        translate("count", prg)
+
         prg.solve()
 
 def main():
