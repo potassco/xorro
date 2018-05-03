@@ -78,8 +78,12 @@ class Application:
 
         prg.ground([("base", [])])
         self.__add_domain(prg)
-
+        
         # TODO: add and ground additional program parts here ...
+        prg.load("examples/count.lp")
+        prg.ground([("base", [])])
+
+        ## Solve
         prg.solve()
 
 def main():
