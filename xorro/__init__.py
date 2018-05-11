@@ -9,14 +9,14 @@ Functions:
 main  -- Main function starting an extended clingo application.
 """
 
-from . import transformer as _tf
+import transformer as _tf
 
 import sys as _sys
 import clingo as _clingo
-from textwrap import fill as _fill
+from textwrap import dedent as _dedent
 from countp import CountCheckPropagator
 from watches_up import WatchesUnitPropagator
-from gje import GJEPropagator
+#from gje import GJEPropagator
 
 class DummyContext:
     def domain2(self):
@@ -48,7 +48,7 @@ def add_domain(prg):
     for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 3):
         ctx._domain3.append(_clingo.Tuple(atom.symbol.arguments))
 
-    prg.add("__domain", [], _fill("""\
+    prg.add("__domain", [], _dedent("""\
         {name}_dom(Id,Type) :- (Id,Type) = @domain2().
         {name}_dom(Id,Type,Tuple) :- (Id,Type,Tuple) = @domain3().
         """.format(name=_tf.g_aux_name)))
@@ -58,12 +58,12 @@ def add_domain(prg):
 def translate(mode, prg):
     if mode == "count":
         add_domain(prg)
-        prg.add("__count", [], _fill("""\
+        prg.add("__count", [], _dedent("""\
             :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
             :- { __parity(ID,odd ,X) } = N, N\\2!=1, __parity(ID,odd).
             """))
         prg.ground([("__count", [])], g_dummy_ctx)
-        
+
     elif mode == "countp":
         add_domain(prg)
         prg.register_propagator(CountCheckPropagator())
@@ -72,10 +72,10 @@ def translate(mode, prg):
         add_domain(prg)
         prg.register_propagator(WatchesUnitPropagator())
 
-    elif mode == "gje":
-        add_domain(prg)
-        prg.register_propagator(GJEPropagator())
-        
+    #elif mode == "gje":
+    #    add_domain(prg)
+    #    prg.register_propagator(GJEPropagator())
+
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
 
@@ -109,19 +109,19 @@ class Application:
 
         """
         group = "Xorro Options"
-        options.add(group, "approach", _fill(
-        """Approach to solve XOR constraints     
-        <arg>: {count|list|tree|countp|up|gje} 
-        """, subsequent_indent=' ' * 6,  width=50,), self.__parse_approach)
+        options.add(group, "approach", _dedent("""\
+        Approach to solve XOR constraints
+              <arg>: {count|list|tree|countp|up|gje}
+        """), self.__parse_approach)
         #count: count aggregate modulo 2.
-        #list: ordered list evaluation.              
-        #tree: bst evaluation in a bottom-up fashion.                        
-        #countp: count after propagation.                           
-        #up: unit propagation.                     
+        #list: ordered list evaluation.
+        #tree: bst evaluation in a bottom-up fashion.
+        #countp: count after propagation.
+        #up: unit propagation.
         #gje: gauss-jordan elimination.
-        
 
-        
+
+
 
     def main(self, prg, files):
         """
