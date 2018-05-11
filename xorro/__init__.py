@@ -10,13 +10,13 @@ main  -- Main function starting an extended clingo application.
 """
 
 from . import transformer as _tf
+from .countp import CountCheckPropagator
+from .watches_up import WatchesUnitPropagator
+#from .gje import GJEPropagator
 
 import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
-from countp import CountCheckPropagator
-from watches_up import WatchesUnitPropagator
-#from gje import GJEPropagator
 
 class DummyContext:
     def domain2(self):
