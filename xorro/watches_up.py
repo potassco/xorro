@@ -24,7 +24,7 @@ class XOR:
         return self.__literals[idx]
 
     def propagate(self, assignment, unassigned):
-        changeLit = False        
+        changeLit = False
         for i in range(2, len(self.__literals)):
             lit = self.__literals[i]
             value = assignment.value(lit)
@@ -34,7 +34,7 @@ class XOR:
                 self.__literals[unassigned] = lit
                 self.__literals[i] = temp
                 break
-        
+
         return changeLit, unassigned
 
     def reason_unitpropagate(self, assignment):
@@ -63,7 +63,7 @@ class XOR:
             conflict = True
         return nogood, conflict
 
-##########################################################################################################    
+##########################################################################################################
 class WatchesUnitPropagator:
     def __init__(self):
         self.__states  = []
@@ -73,7 +73,7 @@ class WatchesUnitPropagator:
             variable = abs(xor[unassigned])
         else:
             variable = 1
-        for thread_id in thread_ids:                
+        for thread_id in thread_ids:
             ctl.add_watch( variable)
             ctl.add_watch(-variable)
             self.__states[thread_id].setdefault(variable, []).append((xor, unassigned))
@@ -83,19 +83,19 @@ class WatchesUnitPropagator:
         parities = []
 
         for atom in init.symbolic_atoms.by_signature("__parity",2):
-	    p = int(str(get_parity(atom.symbol.arguments[1])))
+            p = int(str(get_parity(atom.symbol.arguments[1])))
             parities.append(p)
             size+=1
-        
-        lits = [[] for _ in range(size)]    
-        for atom in init.symbolic_atoms.by_signature("__parity",3):            
+
+        lits = [[] for _ in range(size)]
+        for atom in init.symbolic_atoms.by_signature("__parity",3):
             xor_id = int(str(atom.symbol.arguments[0]))
             lit = init.solver_literal(atom.literal)
-            
-            if lit == 1:				
-		parities[xor_id]  = invert_parity(parities[xor_id])
-	    elif lit > 1 and lit not in lits[xor_id]:
-		lits[xor_id].append(lit)
+
+            if lit == 1:
+                parities[xor_id]  = invert_parity(parities[xor_id])
+            elif lit > 1 and lit not in lits[xor_id]:
+                lits[xor_id].append(lit)
             elif lit < -1 and abs(lit) not in lits[xor_id]:
                 lits[xor_id].append(abs(lit))
 
@@ -105,7 +105,7 @@ class WatchesUnitPropagator:
             #print lits[i], parities[i]
             xor = XOR(lits[i], parities[i])
             self.__add_watch(init, xor, 0, range(init.number_of_threads))
-            if len(lits) > 1:   
+            if len(lits) > 1:
                 self.__add_watch(init, xor, 1, range(init.number_of_threads))
         #print "state", self.__states
 
@@ -126,8 +126,8 @@ class WatchesUnitPropagator:
                     if conflict:
                         if not control.add_nogood(ng):
                             return
-     
+
             if len(state[variable]) == 0:
                 control.remove_watch( variable)
                 control.remove_watch(-variable)
-                state.pop(variable)                          
+                state.pop(variable)
