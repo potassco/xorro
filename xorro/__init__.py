@@ -9,7 +9,7 @@ Functions:
 main  -- Main function starting an extended clingo application.
 """
 
-import transformer as _tf
+from . import transformer as _tf
 
 import sys as _sys
 import clingo as _clingo
