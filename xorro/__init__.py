@@ -14,6 +14,9 @@ from . import transformer as _tf
 import sys as _sys
 import clingo as _clingo
 from textwrap import fill as _fill
+from countp import CountCheckPropagator
+from watches_up import WatchesUnitPropagator
+from gje import GJEPropagator
 
 class DummyContext:
     def domain2(self):
@@ -60,6 +63,19 @@ def translate(mode, prg):
             :- { __parity(ID,odd ,X) } = N, N\\2!=1, __parity(ID,odd).
             """))
         prg.ground([("__count", [])], g_dummy_ctx)
+        
+    elif mode == "countp":
+        add_domain(prg)
+        prg.register_propagator(CountCheckPropagator())
+
+    elif mode == "up":
+        add_domain(prg)
+        prg.register_propagator(WatchesUnitPropagator())
+
+    elif mode == "gje":
+        add_domain(prg)
+        prg.register_propagator(GJEPropagator())
+        
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
 
@@ -79,12 +95,33 @@ class Application:
         self.program_name = name
         self.version = "1.0"
 
+    def __parse_approach(self, value):
+        """
+        Parse approach argument.
+        """
+        self.__approach = str(value)
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje"]
+
     def register_options(self, options):
         """
         Extension point to add options to xorro like choosing the
         transformation to apply.
 
         """
+        group = "Xorro Options"
+        options.add(group, "approach", _fill(
+        """Approach to solve XOR constraints     
+        <arg>: {count|list|tree|countp|up|gje} 
+        """, subsequent_indent=' ' * 6,  width=50,), self.__parse_approach)
+        #count: count aggregate modulo 2.
+        #list: ordered list evaluation.              
+        #tree: bst evaluation in a bottom-up fashion.                        
+        #countp: count after propagation.                           
+        #up: unit propagation.                     
+        #gje: gauss-jordan elimination.
+        
+
+        
 
     def main(self, prg, files):
         """
@@ -96,10 +133,9 @@ class Application:
                 files.append(_sys.stdin)
             _tf.transform((f.read() for f in files), b.add)
 
-
         prg.ground([("base", [])])
 
-        translate("count", prg)
+        translate(self.__approach, prg)
 
         prg.solve()
 

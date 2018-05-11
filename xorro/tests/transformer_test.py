@@ -29,17 +29,40 @@ def solve(s, mode):
             models[-1].sort()
 
     models.sort()
-
+    print "models", models
     return models
 
 class TestProgramTransformer(TestCase):
-    def test_transform(self):
-        for mode in ["count"]:
+
+    def test_empty_even(self):
+        print "\n\n"
+        for mode in ["count", "countp", "up"]:
+            print "test: empty even", mode
             self.assertEqual(solve("&even{ }.", mode), [[]])
-            self.assertEqual(solve("&odd{ }.", mode), [])
+
+    def test_empty_odd(self):
+        print "\n\n"
+        for mode in ["count", "countp", "up"]:
+            print "test: empty odd", mode
+            self.assertEqual(solve("&odd{ }.", mode), [])    
+        
+    def test_basic(self):
+        print "\n\n"
+        for mode in ["count", "countp", "up"]:
+            print "test: basic", mode
             # run one-elementary parity aggregates
             self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }.", mode), [[], ["a", "b"], ['a', 'c'], ['b', 'c']])
             # multiple parity aggregates
             # complex conditions
             # ...
 
+    def test_xor_and_facts(self):
+        print "\n\n"
+        for mode in ["count", "countp", "up"]:
+            print "test: xor and facts", mode
+            # run one-elementary parity aggregates
+            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }. a.", mode), [["a", "b"], ['a', 'c']])
+            # multiple parity aggregates
+            # complex conditions
+            # ...
+        
