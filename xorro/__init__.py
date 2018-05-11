@@ -94,6 +94,7 @@ class Application:
         """
         self.program_name = name
         self.version = "1.0"
+        self.__approach = "count"
 
     def __parse_approach(self, value):
         """
@@ -110,7 +111,7 @@ class Application:
         """
         group = "Xorro Options"
         options.add(group, "approach", _dedent("""\
-        Approach to solve XOR constraints
+        Approach to solve XOR constraints [count]
               <arg>: {count|list|tree|countp|up|gje}
         """), self.__parse_approach)
         #count: count aggregate modulo 2.
@@ -119,9 +120,6 @@ class Application:
         #countp: count after propagation.
         #up: unit propagation.
         #gje: gauss-jordan elimination.
-
-
-
 
     def main(self, prg, files):
         """
