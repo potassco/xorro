@@ -33,16 +33,18 @@ def solve(s, mode):
 
 class TestProgramTransformer(TestCase):
 
+    modes = ["count", "countp", "up"]
+
     def test_empty_even(self):
-        for mode in ["count", "countp", "up"]:
+        for mode in TestProgramTransformer.modes:
             self.assertEqual(solve("&even{ }.", mode), [[]])
 
     def test_empty_odd(self):
-        for mode in ["count", "countp", "up"]:
+        for mode in TestProgramTransformer.modes:
             self.assertEqual(solve("&odd{ }.", mode), [])
 
     def test_basic(self):
-        for mode in ["count", "countp", "up"]:
+        for mode in TestProgramTransformer.modes:
             # run one-elementary parity aggregates
             self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }.", mode), [[], ["a", "b"], ['a', 'c'], ['b', 'c']])
             # multiple parity aggregates
@@ -50,7 +52,7 @@ class TestProgramTransformer(TestCase):
             # ...
 
     def test_xor_and_facts(self):
-        for mode in ["count", "countp", "up"]:
+        for mode in TestProgramTransformer.modes:
             # run one-elementary parity aggregates
             self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }. a.", mode), [["a", "b"], ['a', 'c']])
             # multiple parity aggregates
