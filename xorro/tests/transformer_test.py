@@ -51,6 +51,12 @@ class TestProgramTransformer(TestCase):
             # complex conditions
             # ...
 
+    def test_negative(self):
+        for mode in TestProgramTransformer.modes:
+            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:not b;c:c }.", mode), [['a'], ['a', 'b', 'c'], ['b'], ['c']])
+            self.assertEqual(solve("{a;c}. b :- a. &even{ a:a;b:b;c:c }.", mode), [[], ['a', 'b']])
+            self.assertEqual(solve("{a;c}. b :- not a. &even{ a:a;b:b;c:c }.", mode), [['a', 'c'], ['b', 'c']])
+
     def test_xor_and_facts(self):
         for mode in TestProgramTransformer.modes:
             # run one-elementary parity aggregates

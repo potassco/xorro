@@ -46,7 +46,14 @@ class CountCheckPropagator:
             if ass.is_true(lit):
                 constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
             elif not ass.is_false(lit):
-                constraints[cid]["literals"].add(lit)
+                literals = constraints[cid]["literals"]
+                if lit in literals:
+                    literals.remove(lit)
+                elif -lit in literals:
+                    literals.remove(-lit)
+                    constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
+                else:
+                    constraints[cid]["literals"].add(lit)
 
         for constraint in constraints.values():
             for thread_id in range(len(self.__states), init.number_of_threads):
