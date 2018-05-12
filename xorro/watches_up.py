@@ -6,14 +6,8 @@
 ## **If a constraint is size 2, do not search for another unassigned literal and proceed to xor constraint propagation
 ## Proceed with unit propagation on xor constraint to get the corresponding nogood.
 
-def invert_parity(par):
-    return int(par)^1
+from . import util
 
-def get_parity(par):
-    if str(par) == "odd": return 1
-    else: return 0
-
-##########################################################################################################
 class XOR:
     def __init__(self, literals, parity):
         #assert(len(literals) > 0)
@@ -46,7 +40,7 @@ class XOR:
         for literal in self.__literals:
             if assignment.is_true(literal):
                 nogood.append(literal)
-                parity = invert_parity(parity)
+                parity = util.invert_parity(parity)
                 count +=1
             elif assignment.is_false(literal):
                 nogood.append(-literal)
@@ -79,35 +73,13 @@ class WatchesUnitPropagator:
             self.__states[thread_id].setdefault(variable, []).append((xor, unassigned))
 
     def init(self, init):
-        size = 0
-        parities = []
+        constraints = util.symbols_to_xor(init)
 
-        for atom in init.symbolic_atoms.by_signature("__parity",2):
-            p = int(str(get_parity(atom.symbol.arguments[1])))
-            parities.append(p)
-            size+=1
-
-        lits = [[] for _ in range(size)]
-        for atom in init.symbolic_atoms.by_signature("__parity",3):
-            xor_id = int(str(atom.symbol.arguments[0]))
-            lit = init.solver_literal(atom.literal)
-
-            if lit == 1:
-                parities[xor_id]  = invert_parity(parities[xor_id])
-            elif lit > 1 and lit not in lits[xor_id]:
-                lits[xor_id].append(lit)
-            elif lit < -1 and abs(lit) not in lits[xor_id]:
-                lits[xor_id].append(abs(lit))
-
-        for i in range(len(parities)):
+        for constraint in constraints.values():
             for thread_id in range(len(self.__states), init.number_of_threads):
                 self.__states.append({})
-            #print lits[i], parities[i]
-            xor = XOR(lits[i], parities[i])
+            xor = XOR(list(sorted(constraint["literals"])), constraint["parity"])
             self.__add_watch(init, xor, 0, range(init.number_of_threads))
-            if len(lits) > 1:
-                self.__add_watch(init, xor, 1, range(init.number_of_threads))
-        #print "state", self.__states
 
     def propagate(self, control, changes):
         state  = self.__states[control.thread_id]
