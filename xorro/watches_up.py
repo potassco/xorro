@@ -127,9 +127,10 @@ class WatchesUnitPropagator:
         if control.assignment.decision_level == 0:
             if not self.__sat:
                 control.add_clause([]) and control.propagate()
+                return
             for lit in self.__consequences:
                 if not control.add_clause([lit]) or not control.propagate():
-                    break
+                    return
 
     def propagate(self, control, changes):
         """
