@@ -4,6 +4,7 @@ import sys
 import xorro
 from xorro import transformer
 import clingo
+from textwrap import dedent
 
 class TestCase(unittest.TestCase):
     def assertRaisesRegex(self, *args, **kwargs):
@@ -35,6 +36,10 @@ class TestProgramTransformer(TestCase):
 
     modes = ["count", "countp", "up"]
 
+    def test_trivial(self):
+        for mode in TestProgramTransformer.modes:
+            self.assertEqual(solve("", mode), [[]])
+
     def test_empty_even(self):
         for mode in TestProgramTransformer.modes:
             self.assertEqual(solve("&even{ }.", mode), [[]])
@@ -58,4 +63,18 @@ class TestProgramTransformer(TestCase):
     def test_xor_and_facts(self):
         for mode in TestProgramTransformer.modes:
             self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }. a.", mode), [["a", "b"], ['a', 'c']])
+
+    def test_complex(self):
+        prg = dedent("""\
+            {p(1..10)}.
+            &even{ X : p(X), X=1..7 }.
+            &odd{  X : p(X), X=3..10 }.
+            &odd{  X : not p(X), X=1..3; X : p(X), X=7..10 }.
+            &odd{  X : p(X), X=1..4; X : not p(X), X=6..10 }.
+            &even{  X : p(X), X=4..9; X : not p(X), X=7..8 }.
+            """)
+        models = solve(prg, "count")
+        for mode in TestProgramTransformer.modes:
+            if mode != "count":
+                self.assertEqual(solve(prg, mode), models)
 

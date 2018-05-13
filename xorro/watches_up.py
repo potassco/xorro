@@ -160,7 +160,7 @@ class WatchesUnitPropagator:
                     clause = xor.reason(control.assignment, unassigned)
                     if clause is not None:
                         if not control.add_clause(clause) or not control.propagate():
-                            assert(state[variable] > 0)
+                            assert(state[variable])
                             # reestablish the remaining watches with the same
                             # reason as in (*)
                             state[variable].extend(watches[i + 1:])
