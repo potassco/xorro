@@ -31,6 +31,6 @@ def symbols_to_xor(init):
                 constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
             else:
                 constraints[cid]["literals"].add(lit)
-                if abs(lit) not in xor_literals:
-                    xor_literals.append(abs(lit))
+                if lit not in xor_literals:
+                    xor_literals.append(lit)
     return constraints, sorted(xor_literals)
