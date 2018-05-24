@@ -8,6 +8,7 @@ def invert_parity(par):
 
 def symbols_to_xor(init):
     constraints = {}
+    xor_literals = [] 
 
     for atom in init.symbolic_atoms.by_signature("__parity",2):
         cid = atom.symbol.arguments[0].number
@@ -30,4 +31,6 @@ def symbols_to_xor(init):
                 constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
             else:
                 constraints[cid]["literals"].add(lit)
-    return constraints
+                if abs(lit) not in xor_literals:
+                    xor_literals.append(abs(lit))
+    return constraints, sorted(xor_literals)

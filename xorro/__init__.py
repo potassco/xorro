@@ -12,7 +12,7 @@ main  -- Main function starting an extended clingo application.
 from . import transformer as _tf
 from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
-#from .gje import GJEPropagator
+from .propagate_gje import Propagate_GJE
 
 import sys as _sys
 import clingo as _clingo
@@ -72,9 +72,59 @@ def translate(mode, prg):
         add_domain(prg)
         prg.register_propagator(WatchesUnitPropagator())
 
-    #elif mode == "gje":
-    #    add_domain(prg)
-    #    prg.register_propagator(GJEPropagator())
+    elif mode == "gje":
+        add_domain(prg)
+        prg.register_propagator(Propagate_GJE())
+
+    #elif mode == "tree":
+
+            
+    elif mode == "list":
+
+        def get_parity(par):
+            if str(par) == "odd": return 1
+            else: return 0
+    
+        class Leaf:
+            def __init__(self, atom):
+                self.__atom = atom
+            def translate(self, backend):
+                return self.__atom
+
+        class Tree:
+            def __init__(self, lhs, rhs):
+                self.__lhs = lhs
+                self.__rhs = rhs
+
+            def translate(self, backend):                
+                lhs = self.__lhs.translate(backend)
+                rhs = self.__rhs.translate(backend)
+                aux = backend.add_atom()
+                backend.add_rule([aux], [ lhs, -rhs])
+                backend.add_rule([aux], [-lhs,  rhs])
+                return aux
+  
+        add_domain(prg)
+        constraints = {}
+
+        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,2):
+            cid = atom.symbol.arguments[0].number
+            par = atom.symbol.arguments[1].name
+            constraints[cid] = {"parity": get_parity(par), "literals": []}
+
+        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,3):
+            cid = atom.symbol.arguments[0].number
+            lit = atom.literal
+            constraints[cid]["literals"].append(Leaf(lit))
+
+        with prg.backend() as b:
+            for cid in constraints:
+                for i in range(len(constraints[cid]["literals"])-1):                
+                    lhs = constraints[cid]["literals"][i]
+                    rhs = constraints[cid]["literals"][i+1]
+                    tree = Tree(lhs, rhs)
+                    aux = tree.translate(b)
+                    print  tree._Tree__lhs._Leaf__atom, tree._Tree__rhs._Leaf__atom, aux
 
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
@@ -114,6 +164,7 @@ class Application:
         Approach to solve XOR constraints [count]
               <arg>: {count|list|tree|countp|up|gje}
         """), self.__parse_approach)
+
         #count: count aggregate modulo 2.
         #list: ordered list evaluation.
         #tree: bst evaluation in a bottom-up fashion.

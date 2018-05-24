@@ -28,7 +28,7 @@ class CountCheckPropagator:
         for thread_id in range(len(self.__states), init.number_of_threads):
             self.__states.append([])
 
-        constraints = util.symbols_to_xor(init)
+        constraints, xor_literals = util.symbols_to_xor(init)
         for constraint in constraints.values():
             xor = XOR(list(sorted(constraint["literals"])), constraint["parity"])
             self.__states[thread_id].append(xor)

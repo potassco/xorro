@@ -1,6 +1,8 @@
 from . import util
+from . import gje
 from itertools import chain
 import clingo
+from copy import deepcopy
 
 class XOR:
     """
@@ -28,7 +30,7 @@ class XOR:
 
     def __setitem__(self, idx, val):
         self.__literals[idx] = val
-        return val
+        return val            
 
     def propagate(self, assignment, i):
         """
@@ -46,34 +48,45 @@ class XOR:
                 return True
         return False
 
-    def reason(self, assignment, i):
-        """
-        If the constraint is unit resulting or conflicting returns a reason in
-        form of a clause.
-        """
-        # Switch to the index of the other watched literal that is either
-        # unassigned and has to be propagated or has to be checked for a
-        # conflict. In the second case it was assigned on the same level as the
-        # propagated literal.
-        i = 1 - i
-        count = self.__parity
-        clause = []
-        for j in range(len(self)):
-            if i == j:
-                continue
-            if assignment.is_true(self[j]):
-                clause.append(-self[j])
-                count += 1
-            else:
-                clause.append(self[j])
+    def reason_gje(self, columns, assignment):
+        state = {}
+        partial = []
+        deduced_literals = []
 
-        clause.append(-self[i] if count % 2 == 0 else self[i])
+        ## Get Partial Assignment
+        state["parity"] = columns["parity"]
+        for lit, column in columns.items():
+            if lit != "parity":
+                value = assignment.value(lit)
+                if value == None:
+                    state[lit] = column
+                elif value == True:
+                    state["parity"] = gje.xor_columns(column, state["parity"])
+                    partial.append( lit)
+                elif value == False:                    
+                    partial.append(-lit)                           
 
-        return None if assignment.is_true(clause[-1]) else clause
+        ## Build the matrix from columns state
+        matrix, xor_lits = gje.columns_state_to_matrix(state)
 
-class WatchesUnitPropagator:
+        ## If there are more than unary xors perform GJE
+        if len(state) > 2:
+            matrix = gje.perform_gauss_jordan_elimination(matrix)
+
+        ## Check SATISFIABILITY
+        conflict = gje.check_sat(matrix)
+        if not conflict and xor_lits:
+            ## Imply literals 
+            deduced_literals = gje.deduce_clause(matrix, xor_lits)
+
+        return conflict, partial, deduced_literals
+        
+
+class Propagate_GJE:
     def __init__(self):
         self.__states  = []
+        self.__columns = {}
+        self.__columns_state = [{}]
         self.__sat = True
         self.__consequences = []
 
@@ -91,6 +104,14 @@ class WatchesUnitPropagator:
         for thread_id in thread_ids:
             self.__states[thread_id].setdefault(variable, []).append((xor, unassigned))
 
+    def __lits_to_binary(self, xor_lits, constraint, parity):
+        columns = self.__columns
+        for i in range(len(xor_lits)):
+            if xor_lits[i] in constraint:
+                columns.setdefault(xor_lits[i], []).append(1)
+            else: columns.setdefault(xor_lits[i], []).append(0)
+        columns.setdefault("parity", []).append(parity)
+
     def init(self, init):
         """
         Initializes xor constraints and watches based on the symbol table.
@@ -100,8 +121,9 @@ class WatchesUnitPropagator:
         """
         for thread_id in range(len(self.__states), init.number_of_threads):
             self.__states.append({})
-
+        
         constraints, xor_literals = util.symbols_to_xor(init)
+        ## Build matrix row by row and create row state and col state
         for constraint in constraints.values():
             if len(constraint["literals"]) == 1:
                 lit = next(iter(constraint["literals"]))
@@ -110,10 +132,11 @@ class WatchesUnitPropagator:
                 xor = XOR(list(sorted(constraint["literals"])), constraint["parity"])
                 self.__add_watch(init, xor, 0, range(init.number_of_threads))
                 self.__add_watch(init, xor, 1, range(init.number_of_threads))
+                self.__lits_to_binary(xor_literals, list(sorted(constraint["literals"])), constraint["parity"])
             elif constraint["parity"] == 1:
                 self.__sat = False
                 break
-
+            
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
 
     def check(self, control):
@@ -139,7 +162,9 @@ class WatchesUnitPropagator:
         Generated conflicts are guaranteed to be asserting (have at least two
         literals from the current decision level).
         """
-        state  = self.__states[control.thread_id]
+        state = self.__states[control.thread_id]
+        columns = self.__columns
+                        
         for literal in changes:
             variable = abs(literal)
 
@@ -155,17 +180,18 @@ class WatchesUnitPropagator:
                     # conflicting. In any case, we can keep the watch because
                     # (*) the current decision level has to be backtracked
                     # before the constraint can become unit again.
-                    state[variable].append((xor, unassigned))
-
-                    clause = xor.reason(control.assignment, unassigned)
+                    state[variable].append((xor, unassigned))                                                           
+                    
+                    ## GJE
+                    conflict, partial, clause = xor.reason_gje(columns, control.assignment)
                     if clause is not None:
-                        if not control.add_clause(clause) or not control.propagate():
-                            assert(state[variable])
-                            # reestablish the remaining watches with the same
-                            # reason as in (*)
-                            state[variable].extend(watches[i + 1:])
+                        for lit in clause:
+                            if not control.add_nogood(partial+[-lit]) or not control.propagate():
+                                return                                
+                    if conflict:
+                        if not control.add_nogood(partial) or not control.propagate():
                             return
-
+                    
             if len(state[variable]) == 0:
                 control.remove_watch( variable)
                 control.remove_watch(-variable)
