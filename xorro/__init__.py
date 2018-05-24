@@ -123,8 +123,7 @@ def translate(mode, prg):
                     lhs = constraints[cid]["literals"][i]
                     rhs = constraints[cid]["literals"][i+1]
                     tree = Tree(lhs, rhs)
-                    aux = tree.translate(b)
-                    print  tree._Tree__lhs._Leaf__atom, tree._Tree__rhs._Leaf__atom, aux
+                    aux = tree.translate(b)                    
 
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
