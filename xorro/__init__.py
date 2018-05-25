@@ -76,15 +76,11 @@ def translate(mode, prg):
         add_domain(prg)
         prg.register_propagator(Propagate_GJE())
 
-    #elif mode == "tree":
+    elif mode == "tree":
+        raise RuntimeError("todo: implement tree translation")
 
-            
     elif mode == "list":
-
-        def get_parity(par):
-            if str(par) == "odd": return 1
-            else: return 0
-    
+        # TODO: putting this code here is a bad idea
         class Leaf:
             def __init__(self, atom):
                 self.__atom = atom
@@ -96,34 +92,34 @@ def translate(mode, prg):
                 self.__lhs = lhs
                 self.__rhs = rhs
 
-            def translate(self, backend):                
+            def translate(self, backend):
                 lhs = self.__lhs.translate(backend)
                 rhs = self.__rhs.translate(backend)
                 aux = backend.add_atom()
                 backend.add_rule([aux], [ lhs, -rhs])
                 backend.add_rule([aux], [-lhs,  rhs])
                 return aux
-  
-        add_domain(prg)
-        constraints = {}
 
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,2):
+        # TODO: with a little bit of refactoring util.get_xor_constraints can be used
+        constraints = {}
+        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
             cid = atom.symbol.arguments[0].number
             par = atom.symbol.arguments[1].name
-            constraints[cid] = {"parity": get_parity(par), "literals": []}
+            constraints[cid] = {"parity": util.get_parity(par), "tree": None}
 
         for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,3):
-            cid = atom.symbol.arguments[0].number
-            lit = atom.literal
-            constraints[cid]["literals"].append(Leaf(lit))
+            constraint = constraints[atom.symbol.arguments[0].number]
+            tree = Leaf(atom.literal)
+            constraint["tree"] = tree if constraint["tree"] is None else Tree(constraint["tree"], tree)
 
         with prg.backend() as b:
-            for cid in constraints:
-                for i in range(len(constraints[cid]["literals"])-1):                
-                    lhs = constraints[cid]["literals"][i]
-                    rhs = constraints[cid]["literals"][i+1]
-                    tree = Tree(lhs, rhs)
-                    aux = tree.translate(b)                    
+            for constraint in constraints.values():
+                if constraint["tree"] is None:
+                    if constraint["parity"]:
+                        b.add_rule([], [])
+                else:
+                    aux = constraint["tree"].translate(b)
+                    b.add_rule([], [-aux if constraint["parity"] else aux])
 
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
