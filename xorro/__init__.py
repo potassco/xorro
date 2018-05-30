@@ -9,12 +9,12 @@ Functions:
 main  -- Main function starting an extended clingo application.
 """
 
+from . import util
 from . import transformer as _tf
 from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .propagate_gje import Propagate_GJE
 
-import util
 import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
