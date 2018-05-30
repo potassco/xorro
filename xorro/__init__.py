@@ -19,15 +19,6 @@ import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
 
-# TODO: remove when clingo 5.3 is ready
-class DummyContext:
-    def domain2(self):
-        return []
-
-    def domain3(self):
-        return []
-g_dummy_ctx = DummyContext()
-
 class Leaf:
     def __init__(self, atom):
         self.__atom = atom
@@ -47,54 +38,21 @@ class Tree:
         backend.add_rule([aux], [-lhs,  rhs])
         return aux
 
-def add_domain(prg):
-    """
-    Adds the domain for the __parity atoms to the program.
-    """
-    class Context:
-        def __init__(self):
-            self._domain2 = []
-            self._domain3 = []
-
-        def domain2(self):
-            return self._domain2
-
-        def domain3(self):
-            return self._domain3
-
-    ctx = Context()
-
-    for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
-        ctx._domain2.append(_clingo.Tuple(atom.symbol.arguments))
-    for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 3):
-        ctx._domain3.append(_clingo.Tuple(atom.symbol.arguments))
-
-    prg.add("__domain", [], _dedent("""\
-        {name}_dom(Id,Type) :- (Id,Type) = @domain2().
-        {name}_dom(Id,Type,Tuple) :- (Id,Type,Tuple) = @domain3().
-        """.format(name=_tf.g_aux_name)))
-
-    prg.ground([("__domain", [])], ctx)
-
 def translate(mode, prg):
     if mode == "count":
-        add_domain(prg)
         prg.add("__count", [], _dedent("""\
             :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
             :- { __parity(ID,odd ,X) } = N, N\\2!=1, __parity(ID,odd).
             """))
-        prg.ground([("__count", [])], g_dummy_ctx)
+        prg.ground([("__count", [])])
 
     elif mode == "countp":
-        add_domain(prg)
         prg.register_propagator(CountCheckPropagator())
 
     elif mode == "up":
-        add_domain(prg)
         prg.register_propagator(WatchesUnitPropagator())
 
     elif mode == "gje":
-        add_domain(prg)
         prg.register_propagator(Propagate_GJE())
 
     elif mode in ["list", "tree"]:
