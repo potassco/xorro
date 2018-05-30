@@ -14,10 +14,12 @@ from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .propagate_gje import Propagate_GJE
 
+import util
 import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
 
+# TODO: remove when clingo 5.3 is ready
 class DummyContext:
     def domain2(self):
         return []
@@ -26,7 +28,6 @@ class DummyContext:
         return []
 g_dummy_ctx = DummyContext()
 
-# TODO: Is here more useful to use these classes in both leaf and tree?
 class Leaf:
     def __init__(self, atom):
         self.__atom = atom
@@ -96,81 +97,33 @@ def translate(mode, prg):
         add_domain(prg)
         prg.register_propagator(Propagate_GJE())
 
-    elif mode == "tree":
-        def split(a):            
-            if len(a) == 1:
-                return [a]
-            return [a[i:i+2] for i  in range(0, len(a), 2)]
+    elif mode in ["list", "tree"]:
+        def to_list(constraint):
+            assert(len(constraint) > 1)
+            return reduce(Tree, (Leaf(literal) for literal in constraint))
 
-        def traverse(l, tree):
-            if isinstance(tree, Tree):
-                if tree._Tree__lhs:
-                    l.append(tree._Tree__rhs)
-                    traverse(l, tree._Tree__lhs)                                    
+        def to_tree(constraint):
+            layer = [Leaf(literal) for literal in constraint]
+            def tree(l, r):
+                return l if r is None else Tree(l, r)
+            while len(layer) > 1:
+                layer = list(util.starmap(tree, util.zip_longest(layer[0::2], layer[1::2])))
+            return layer[0]
+
+        def get_lit(atom):
+            return atom.literal, True if atom.is_fact else None
+
+        ret = util.symbols_to_xor_r(prg.symbolic_atoms, get_lit)
+        with prg.backend() as b:
+            if ret is None:
+                b.add_rule([], [])
             else:
-                l.append(tree)
-            return l
-        
-        # TODO: with a little bit of refactoring util.get_xor_constraints can be used
-        constraints = {}
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
-            cid = atom.symbol.arguments[0].number
-            par = atom.symbol.arguments[1].name
-            constraints[cid] = {"parity": util.get_parity(par), "tree": None}
-
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,3):
-            constraint = constraints[atom.symbol.arguments[0].number]
-            tree = Leaf(atom.literal)
-            constraint["tree"] = tree if constraint["tree"] is None else Tree(constraint["tree"], tree)
-        
-        with prg.backend() as b:
-            for constraint in constraints.values():                                
-                if constraint["tree"] is None:
-                    if constraint["parity"]:
-                        b.add_rule([], [])
-                else:
-                    aux_ = []
-                    leaves_ = []
-                    leaves_ = traverse(leaves_, constraint["tree"])                    
-                    leaves_ = split(leaves_)
-                    while True:                    
-                        for part in leaves_:
-                            if len(part) == 2:
-                                tree = Tree(part[0], part[1])
-                                aux = tree.translate(b)
-                                aux_.append(Leaf(aux))
-                            else:
-                                aux_+=part
-                        if len(aux_) == 1:
-                            aux = aux_[0].translate(b)
-                            b.add_rule([], [-aux if constraint["parity"] else aux])
-                            break                        
-                        else:
-                            leaves_ = split(aux_)
-                            aux_ = []
-
-    elif mode == "list":        
-
-        # TODO: with a little bit of refactoring util.get_xor_constraints can be used
-        constraints = {}
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name, 2):
-            cid = atom.symbol.arguments[0].number
-            par = atom.symbol.arguments[1].name
-            constraints[cid] = {"parity": util.get_parity(par), "tree": None}
-
-        for atom in prg.symbolic_atoms.by_signature(_tf.g_aux_name,3):
-            constraint = constraints[atom.symbol.arguments[0].number]
-            tree = Leaf(atom.literal)
-            constraint["tree"] = tree if constraint["tree"] is None else Tree(constraint["tree"], tree)
-
-        with prg.backend() as b:
-            for constraint in constraints.values():
-                if constraint["tree"] is None:
-                    if constraint["parity"]:
-                        b.add_rule([], [])
-                else:
-                    aux = constraint["tree"].translate(b)
-                    b.add_rule([], [-aux if constraint["parity"] else aux])
+                constraints, facts = ret
+                for fact in facts:
+                    b.add_rule([], [-fact])
+                for constraint in constraints:
+                    tree = to_list(constraint) if mode == "list" else to_tree(constraint)
+                    b.add_rule([], [-tree.translate(b)])
 
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
@@ -211,6 +164,7 @@ class Application:
               <arg>: {count|list|tree|countp|up|gje}
         """), self.__parse_approach)
 
+        # TODO: belongs into option documentation not in comments
         #count: count aggregate modulo 2.
         #list: ordered list evaluation.
         #tree: bst evaluation in a bottom-up fashion.
