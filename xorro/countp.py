@@ -29,10 +29,7 @@ class CountCheckPropagator:
         # NOTE: quite a bit of ceremony here
         #       it would be better to handle these cases here more elegantly
         #       but this propagator is just a toy anyway
-        def get_lit(atom):
-            lit = init.solver_literal(atom.literal)
-            return lit, init.assignment.value(lit)
-        ret = util.symbols_to_xor_r(init.symbolic_atoms, get_lit)
+        ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
         if ret is None:
             constraints = [[]]
         else:

@@ -44,6 +44,13 @@ def symbols_to_xor(init):
                     xor_literals.append(lit)
     return constraints, sorted(xor_literals)
 
+def default_get_lit(init):
+    value = init.assignment.value
+    def get_lit(atom):
+        lit = init.solver_literal(atom.literal)
+        return lit, value(lit)
+    return get_lit
+
 class _XORConstraint:
     def __init__(self, parity):
         self.parity = parity
