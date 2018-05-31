@@ -58,7 +58,7 @@ def translate(mode, prg):
     elif mode in ["list", "tree"]:
         def to_list(constraint):
             assert(len(constraint) > 1)
-            return reduce(Tree, (Leaf(literal) for literal in constraint))
+            return util.reduce(Tree, (Leaf(literal) for literal in constraint))
 
         def to_tree(constraint):
             layer = [Leaf(literal) for literal in constraint]

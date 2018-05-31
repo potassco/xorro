@@ -7,6 +7,7 @@ def attrdef(m, a, b):
     return getattr(m, a if hasattr(m, a) else b)
 
 zip_longest = attrdef(sys.modules[__name__], 'zip_longest', 'izip_longest')
+reduce = getattr(sys.modules[__name__], 'reduce')
 
 def get_parity(par):
     if str(par) == "odd": return 1
