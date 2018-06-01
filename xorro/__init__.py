@@ -19,9 +19,16 @@ import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
 
+def translate_binary_xor(backend, lhs, rhs):
+    aux = backend.add_atom()
+    backend.add_rule([aux], [ lhs, -rhs])
+    backend.add_rule([aux], [-lhs,  rhs])
+    return aux
+
 class Leaf:
     def __init__(self, atom):
         self.__atom = atom
+
     def translate(self, backend):
         return self.__atom
 
@@ -33,10 +40,15 @@ class Tree:
     def translate(self, backend):
         lhs = self.__lhs.translate(backend)
         rhs = self.__rhs.translate(backend)
-        aux = backend.add_atom()
-        backend.add_rule([aux], [ lhs, -rhs])
-        backend.add_rule([aux], [-lhs,  rhs])
-        return aux
+        return translate_binary_xor(backend, lhs, rhs)
+
+class List:
+    def __init__(self, literals):
+        assert(len(literals) > 0)
+        self.__literals = literals
+
+    def translate(self, backend):
+        return util.reduce(lambda l, r: translate_binary_xor(backend, l, r), self.__literals)
 
 def translate(mode, prg):
     if mode == "count":
@@ -56,10 +68,6 @@ def translate(mode, prg):
         prg.register_propagator(Propagate_GJE())
 
     elif mode in ["list", "tree"]:
-        def to_list(constraint):
-            assert(len(constraint) > 1)
-            return util.reduce(Tree, (Leaf(literal) for literal in constraint))
-
         def to_tree(constraint):
             layer = [Leaf(literal) for literal in constraint]
             def tree(l, r):
@@ -80,7 +88,7 @@ def translate(mode, prg):
                 for fact in facts:
                     b.add_rule([], [-fact])
                 for constraint in constraints:
-                    tree = to_list(constraint) if mode == "list" else to_tree(constraint)
+                    tree = List(constraint) if mode == "list" else to_tree(constraint)
                     b.add_rule([], [-tree.translate(b)])
 
     else:
