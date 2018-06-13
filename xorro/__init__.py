@@ -65,6 +65,7 @@ def translate(mode, prg):
         prg.register_propagator(WatchesUnitPropagator())
 
     elif mode == "gje":
+        prg.register_propagator(WatchesUnitPropagator())
         prg.register_propagator(Propagate_GJE())
 
     elif mode in ["list", "tree"]:

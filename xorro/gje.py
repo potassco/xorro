@@ -49,6 +49,12 @@ def columns_state_to_matrix(state):
     m = np.array(m).T.tolist()
     return m, lits
 
+def remove_rows_zeros(m):
+    matrix = []
+    for row in m:
+        if sum(row) > 0:
+            matrix.append(row)
+    return matrix
 
 def check_sat(m):
     """ Check the matrix satisfiability wrt the augmented (parity) column  """
@@ -130,10 +136,11 @@ def perform_gauss_jordan_elimination(m):
         j+=1    
 
     ## "Backward Substitution"
+    j = len(m[0])-1
     for r in range(dimension, 1, -1):
         ## Check for 1s to XOR
         for c in range(r, 1, -1):
-            if m[i-1][j-1] == 1 and m[c-1-1][r-1] == 1:
+            if m[r-1][j-1] == 1 and m[c-2][j-1] == 1:
                 m = xor(m,r-1,c-1-1)
         i-=1
         j-=1
