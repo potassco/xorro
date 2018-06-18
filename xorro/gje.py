@@ -1,5 +1,5 @@
 """
-This module contains all the methods to perform Gauss Jordan Elimination. 
+This module contains all the methods to perform Gauss Jordan Elimination.
 
 Functions:
 For pre process
@@ -72,8 +72,8 @@ def check_sat(m):
         for row in matrix[::-1]:
             if row[-1] == 1 and np.sum(row[:-1]) == 0:
                 ## UNSAT
-                conflict = True                        
-                break 
+                conflict = True
+                break
     return conflict
 
 
@@ -94,7 +94,7 @@ def deduce_clause(m, lits):
     ## If empty matrix, means there are no implications
     if matrix.size > 0:
         ## If matrix is square
-        if len(matrix) >= (len(matrix[0])-1):                 
+        if len(matrix) >= (len(matrix[0])-1):
             for i in range(len(lits)):
                 if matrix[i,-1] == 1:
                     clause.append( lits[i])
@@ -124,7 +124,7 @@ def perform_gauss_jordan_elimination(m):
         if m[i][j] == 0:
             ## Swap and Process Column
             for c in range(r+1,len(m)):
-                if m[c][r] == 1:                
+                if m[c][r] == 1:
                     m = swap(m, r, c)
                     break
 
@@ -133,7 +133,7 @@ def perform_gauss_jordan_elimination(m):
             if m[c][r] == 1:
                 m = xor(m,r,c)
         i+=1
-        j+=1    
+        j+=1
 
     ## "Backward Substitution"
     j = len(m[0])-1
@@ -145,4 +145,4 @@ def perform_gauss_jordan_elimination(m):
         i-=1
         j-=1
 
-    return m   
+    return m

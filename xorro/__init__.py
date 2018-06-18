@@ -50,7 +50,7 @@ class List:
     def translate(self, backend):
         return util.reduce(lambda l, r: translate_binary_xor(backend, l, r), self.__literals)
 
-def translate(mode, prg):
+def translate(mode, gje, prg):
     if mode == "count":
         prg.add("__count", [], _dedent("""\
             :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
@@ -63,10 +63,6 @@ def translate(mode, prg):
 
     elif mode == "up":
         prg.register_propagator(WatchesUnitPropagator())
-
-    elif mode == "gje":
-        prg.register_propagator(WatchesUnitPropagator())
-        prg.register_propagator(Propagate_GJE())
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
@@ -92,8 +88,14 @@ def translate(mode, prg):
                     tree = List(constraint) if mode == "list" else to_tree(constraint)
                     b.add_rule([], [-tree.translate(b)])
 
+    elif mode == "none":
+        pass
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
+
+    if gje:
+        prg.register_propagator(Propagate_GJE())
+
 
 class Application:
     """
@@ -111,13 +113,14 @@ class Application:
         self.program_name = name
         self.version = "1.0"
         self.__approach = "count"
+        self.__gje = False
 
     def __parse_approach(self, value):
         """
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "none"]
 
     def register_options(self, options):
         """
@@ -127,17 +130,16 @@ class Application:
         """
         group = "Xorro Options"
         options.add(group, "approach", _dedent("""\
-        Approach to solve XOR constraints [count]
-              <arg>: {count|list|tree|countp|up|gje}
-        """), self.__parse_approach)
-
-        # TODO: belongs into option documentation not in comments
-        #count: count aggregate modulo 2.
-        #list: ordered list evaluation.
-        #tree: bst evaluation in a bottom-up fashion.
-        #countp: count after propagation.
-        #up: unit propagation.
-        #gje: gauss-jordan elimination.
+        Approach to handle XOR constraints [count]
+              <arg>: {count|list|tree|countp|up|none}
+                count      : Add count aggregates modulo 2
+                {list,tree}: Translate binary xor operators to rules
+                             (binary operators are arranged in list/tree)
+                countp     : Propagator simply counting assigned literals
+                up         : Propagator implementing unit propagation
+                none       : Do not propagate/translate xor constraints"""), self.__parse_approach)
+        options.add_flag(group, "gje", _dedent("""\
+        Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
 
     def main(self, prg, files):
         """

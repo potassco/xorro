@@ -5,6 +5,7 @@ import xorro
 from xorro import transformer
 import clingo
 from textwrap import dedent
+import itertools
 
 class TestCase(unittest.TestCase):
     def assertRaisesRegex(self, *args, **kwargs):
@@ -12,14 +13,14 @@ class TestCase(unittest.TestCase):
             if sys.version_info[0] < 3
             else unittest.TestCase.assertRaisesRegex(self, *args, **kwargs))
 
-def solve(s, mode):
+def solve(s, mode, gje):
     messages = []
     prg = clingo.Control(logger=lambda c, m: messages.append(m))
     with prg.builder() as b:
         transformer.transform([s], b.add)
     prg.ground([("base", [])])
 
-    xorro.translate(mode, prg)
+    xorro.translate(mode, gje, prg)
 
     prg.configuration.solve.models = 0
 
@@ -34,35 +35,38 @@ def solve(s, mode):
 
 class TestProgramTransformer(TestCase):
 
-    modes = ["count", "countp", "up", "gje", "list", "tree"]
+    modes = ["count", "countp", "up", "list", "tree"]
+    modes = ( zip(modes, itertools.repeat(False))
+            + zip(modes, itertools.repeat(True))
+            )
 
     def test_trivial(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("", mode), [[]])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("", mode, gje), [[]])
 
     def test_empty_even(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("&even{ }.", mode), [[]])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("&even{ }.", mode, gje), [[]])
 
     def test_empty_odd(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("&odd{ }.", mode), [])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("&odd{ }.", mode, gje), [])
 
     def test_basic(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }.", mode), [[], ["a", "b"], ['a', 'c'], ['b', 'c']])
-            self.assertEqual(solve("{a}. &even{ a:a }.", mode), [[]])
-            self.assertEqual(solve("{a}. &odd{ a:a }.", mode), [["a"]])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }.", mode, gje), [[], ["a", "b"], ['a', 'c'], ['b', 'c']])
+            self.assertEqual(solve("{a}. &even{ a:a }.", mode, gje), [[]])
+            self.assertEqual(solve("{a}. &odd{ a:a }.", mode, gje), [["a"]])
 
     def test_negative(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:not b;c:c }.", mode), [['a'], ['a', 'b', 'c'], ['b'], ['c']])
-            self.assertEqual(solve("{a;c}. b :- a. &even{ a:a;b:b;c:c }.", mode), [[], ['a', 'b']])
-            self.assertEqual(solve("{a;c}. b :- not a. &even{ a:a;b:b;c:c }.", mode), [['a', 'c'], ['b', 'c']])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:not b;c:c }.", mode, gje), [['a'], ['a', 'b', 'c'], ['b'], ['c']])
+            self.assertEqual(solve("{a;c}. b :- a. &even{ a:a;b:b;c:c }.", mode, gje), [[], ['a', 'b']])
+            self.assertEqual(solve("{a;c}. b :- not a. &even{ a:a;b:b;c:c }.", mode, gje), [['a', 'c'], ['b', 'c']])
 
     def test_xor_and_facts(self):
-        for mode in TestProgramTransformer.modes:
-            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }. a.", mode), [["a", "b"], ['a', 'c']])
+        for mode, gje in TestProgramTransformer.modes:
+            self.assertEqual(solve("{a;b;c}. &even{ a:a;b:b;c:c }. a.", mode, gje), [["a", "b"], ['a', 'c']])
 
     def test_complex(self):
         prg = dedent("""\
@@ -73,8 +77,8 @@ class TestProgramTransformer(TestCase):
             &odd{  X : p(X), X=1..4; X : not p(X), X=6..10 }.
             &even{  X : p(X), X=4..9; X : not p(X), X=7..8 }.
             """)
-        models = solve(prg, "count")
-        for mode in TestProgramTransformer.modes:
-            if mode != "count":
-                self.assertEqual(solve(prg, mode), models)
+        models = solve(prg, "count", False)
+        for mode, gje in TestProgramTransformer.modes:
+            print (mode, gje)
+            self.assertEqual(solve(prg, mode, gje), models)
 

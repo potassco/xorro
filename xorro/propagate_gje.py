@@ -60,17 +60,20 @@ class Propagate_GJE:
         """
         for thread_id in range(len(self.__states), init.number_of_threads):
             self.__states.append({})
-        
+
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
         literals = []
         ## Get the constraints
         ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
         if ret is not None:
-            constraints, facts = ret
-            constraints.extend([fact] for fact in facts)
+            # NOTE: whether facts should be handled here is up to question
+            #       this should only be necessary if the propagator is to be used standalone
+            #       without any of the other approaches
+            constraints, _ = ret
 
             ## Get the literals and parities
             for constraint in constraints:
+                # FIXME: this is strange because all constraints are represented as "odd" constraints
                 even = False
                 if constraint[0] < 0:
                     even = True
@@ -87,6 +90,9 @@ class Propagate_GJE:
             for constraint in constraints:
                 for thread_id in range(init.number_of_threads):
                     self.__states[thread_id] = lits_to_binary(self.__states[thread_id], sorted(literals), constraint)
+        else:
+            # NOTE: if the propagator is to be used standalone, this case has to be handled
+            pass
 
     def check(self, control):
         """
