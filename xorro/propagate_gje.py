@@ -27,7 +27,7 @@ def reason_gje(columns, assignment):
     ## If there are more than unary xors perform GJE
     if len(state) > 2:
         matrix = gje.remove_rows_zeros(matrix)
-        matrix = gje.perform_gauss_jordan_elimination(matrix)
+        matrix = gje.perform_gauss_jordan_elimination(matrix,False)
 
     ## Check SATISFIABILITY
     conflict = gje.check_sat(matrix)

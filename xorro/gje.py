@@ -17,6 +17,11 @@ deduced_clause -- Obtain implications after GJE
 
 import numpy as np
 
+def print_matrix(m):
+    for i in range(len(m)):
+        print m[i]
+    print ""
+    
 def swap(m, r1, r2):
     """ Swap rows in forward elimination"""
     temp  = m[r1]
@@ -80,15 +85,9 @@ def check_sat(m):
 def deduce_clause(m, lits):
     """ If no conflict, deduce the implications after GJE """
     clause = []
-    mm = []
-    m = np.array(m)
 
     #Pre work... Remove rows with all zeros
-    sums = m.sum(axis=1)
-    for i in range(len(sums)):
-        if sums[i] != 0:
-            mm.append(m[i].tolist())
-
+    mm = remove_rows_zeros(m)
     matrix = np.array(mm)
 
     ## If empty matrix, means there are no implications
@@ -111,38 +110,91 @@ def deduce_clause(m, lits):
     return clause
 
 
-def perform_gauss_jordan_elimination(m):
+def perform_gauss_jordan_elimination(m, show):
     """ Perform GJE using swap and xor operations """
+    if show:
+        print "Initial State"
+        print_matrix(m)
+
+    if show:
+        print "Forward Elimination"
     dimension = len(m)
-    if len(m) > len(m[0]):
-        dimension = len(m[0])
+    #if len(m) > len(m[0]):
+    #    dimension = len(m[0])
+    if show:
+        print "len(m)", len(m), "len(m[0])", len(m[0]), "dimension", dimension
 
     ## "Forward Elimination"
-    i = 0
-    j = 0
-    for r in range(dimension):
-        if m[i][j] == 0:
-            ## Swap and Process Column
-            for c in range(r+1,len(m)):
-                if m[c][r] == 1:                
-                    m = swap(m, r, c)
-                    break
+    r = 0
+    right_most_col = 0
+    lowest_row = 0
+    for c in range(len(m[0])-1):
+        _swap = False
+        _xor  = False
+        if show:
+            print "r", r, "c", c, "value", m[r][c]
+        for j in range(r+1, dimension):
+            if m[r][c] == 0 and m[j][c] == 1:
+                if show:
+                    print "Swapping", m[r], "and", m[j]
+                m = swap(m,r,j)
+                _swap = True
+                if show:
+                    print_matrix(m)
 
-        ## Check for 1s to XOR
-        for c in range(r+1,len(m)):
-            if m[c][r] == 1:
-                m = xor(m,r,c)
-        i+=1
-        j+=1    
+            if m[r][c] == 1:
+                _xor = True
+                if m[j][c] == 1:
+                    if show:
+                        print "XOR Row", r, m[r], "into Row", j, m[j]
+                    m = xor(m,r,j)
+                    if show:
+                         print_matrix(m)
+
+        if m[r][c] == 1:
+            right_most_col = c
+            lowest_row = r
+        if show:
+            print "_swap", _swap, "_xor", _xor
+        if _swap or _xor:
+            r+=1
+
+    if show:
+        print ""
+        print "Right Most Column", right_most_col, "lowest row", lowest_row
+        print "Row Echelon Form"
+        print_matrix(m)
+
+    if show:
+        print ""
+        print "Backward Substitution"
 
     ## "Backward Substitution"
-    j = len(m[0])-1
-    for r in range(dimension, 1, -1):
-        ## Check for 1s to XOR
-        for c in range(r, 1, -1):
-            if m[r-1][j-1] == 1 and m[c-2][j-1] == 1:
-                m = xor(m,r-1,c-1-1)
-        i-=1
-        j-=1
+    #r = len(m)-1
+    #if len(m)> len(m[0]):
+    r = lowest_row
+    for c in range(right_most_col, 0, -1):
+        _xor  = False
+        if show:
+            print "r", r, "c,", c, "value", m[r][c]
+        for j in range(r-1, -1, -1):
+            if m[r][c] == 1 and m[j][c] == 1:
+                _xor  = True
+                if show:
+                    print "XOR Row", r, m[r], "into Row", j, m[j]
+                m = xor(m,r,j)
+                if show:
+                    print_matrix(m)
 
-    return m   
+        if show:
+            print "_xor", _xor
+        if m[r][c-1] == 0:
+            r-=1
+
+    if show:
+        print ""
+        print "Result"
+        print_matrix(m)
+
+
+    return m
