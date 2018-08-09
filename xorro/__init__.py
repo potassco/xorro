@@ -95,6 +95,7 @@ def translate(mode, prg):
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
 
+
 class Application:
     """
     Application object as accepted by clingo.clingo_main().
@@ -111,6 +112,7 @@ class Application:
         self.program_name = name
         self.version = "1.0"
         self.__approach = "count"
+        self.__gje = False
 
     def __parse_approach(self, value):
         """
@@ -127,17 +129,16 @@ class Application:
         """
         group = "Xorro Options"
         options.add(group, "approach", _dedent("""\
-        Approach to solve XOR constraints [count]
-              <arg>: {count|list|tree|countp|up|gje}
-        """), self.__parse_approach)
-
-        # TODO: belongs into option documentation not in comments
-        #count: count aggregate modulo 2.
-        #list: ordered list evaluation.
-        #tree: bst evaluation in a bottom-up fashion.
-        #countp: count after propagation.
-        #up: unit propagation.
-        #gje: gauss-jordan elimination.
+        Approach to handle XOR constraints [count]
+              <arg>: {count|list|tree|countp|up|none}
+                count      : Add count aggregates modulo 2
+                {list,tree}: Translate binary xor operators to rules
+                             (binary operators are arranged in list/tree)
+                countp     : Propagator simply counting assigned literals
+                up         : Propagator implementing unit propagation
+                none       : Do not propagate/translate xor constraints"""), self.__parse_approach)
+        options.add_flag(group, "gje", _dedent("""\
+        Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
 
     def main(self, prg, files):
         """
