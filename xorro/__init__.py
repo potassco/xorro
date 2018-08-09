@@ -95,7 +95,6 @@ def translate(mode, prg):
     else:
         raise RuntimeError("unknow transformation mode: {}".format(mode))
 
-
 class Application:
     """
     Application object as accepted by clingo.clingo_main().
@@ -112,7 +111,6 @@ class Application:
         self.program_name = name
         self.version = "1.0"
         self.__approach = "count"
-        self.__gje = False
 
     def __parse_approach(self, value):
         """
