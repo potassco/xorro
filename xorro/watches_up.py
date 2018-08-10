@@ -14,10 +14,9 @@ class XOR:
     from this point. This is important to get the amortized linear propagation
     time.
     """
-    def __init__(self, literals, parity):
+    def __init__(self, literals):
         assert(len(literals) >= 2)
         self.__literals = literals
-        self.__parity = parity
         self.__index = 2
 
     def __len__(self):
@@ -56,7 +55,7 @@ class XOR:
         # conflict. In the second case it was assigned on the same level as the
         # propagated literal.
         i = 1 - i
-        count = self.__parity
+        count = 0
         clause = []
         for j in range(len(self)):
             if i == j:
@@ -67,7 +66,7 @@ class XOR:
             else:
                 clause.append(self[j])
 
-        clause.append(-self[i] if count % 2 == 0 else self[i])
+        clause.append(-self[i] if count % 2 else self[i])
 
         return None if assignment.is_true(clause[-1]) else clause
 
@@ -101,18 +100,16 @@ class WatchesUnitPropagator:
         for thread_id in range(len(self.__states), init.number_of_threads):
             self.__states.append({})
 
-        constraints = util.symbols_to_xor(init)
-        for constraint in constraints.values():
-            if len(constraint["literals"]) == 1:
-                lit = next(iter(constraint["literals"]))
-                self.__consequences.append(lit if constraint["parity"] == 1 else -lit)
-            elif len(constraint["literals"]):
-                xor = XOR(list(sorted(constraint["literals"])), constraint["parity"])
+        ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
+        if ret is None:
+            self.__sat = False
+        else:
+            constraints, facts = ret
+            self.__consequences.extend(facts)
+            for constraint in constraints:
+                xor = XOR(constraint)
                 self.__add_watch(init, xor, 0, range(init.number_of_threads))
                 self.__add_watch(init, xor, 1, range(init.number_of_threads))
-            elif constraint["parity"] == 1:
-                self.__sat = False
-                break
 
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
 
