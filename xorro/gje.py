@@ -19,8 +19,8 @@ import numpy as np
 
 def print_matrix(m):
     for i in range(len(m)):
-        print m[i]
-    print ""
+        print(m[i])
+    print("")
     
 def swap(m, r1, r2):
     """ Swap rows in forward elimination"""
@@ -113,16 +113,16 @@ def deduce_clause(m, lits):
 def perform_gauss_jordan_elimination(m, show):
     """ Perform GJE using swap and xor operations """
     if show:
-        print "Initial State"
+        print("Initial State")
         print_matrix(m)
 
     if show:
-        print "Forward Elimination"
+        print("Forward Elimination")
     dimension = len(m)
     #if len(m) > len(m[0]):
     #    dimension = len(m[0])
     if show:
-        print "len(m)", len(m), "len(m[0])", len(m[0]), "dimension", dimension
+        print("len(m)", len(m), "len(m[0])", len(m[0]), "dimension", dimension)
 
     ## "Forward Elimination"
     r = 0
@@ -132,11 +132,11 @@ def perform_gauss_jordan_elimination(m, show):
         _swap = False
         _xor  = False
         if show:
-            print "r", r, "c", c, "value", m[r][c]
+            print("r", r, "c", c, "value", m[r][c])
         for j in range(r+1, dimension):
             if m[r][c] == 0 and m[j][c] == 1:
                 if show:
-                    print "Swapping", m[r], "and", m[j]
+                    print("Swapping", m[r], "and", m[j])
                 m = swap(m,r,j)
                 _swap = True
                 if show:
@@ -146,7 +146,7 @@ def perform_gauss_jordan_elimination(m, show):
                 _xor = True
                 if m[j][c] == 1:
                     if show:
-                        print "XOR Row", r, m[r], "into Row", j, m[j]
+                        print("XOR Row", r, m[r], "into Row", j, m[j])
                     m = xor(m,r,j)
                     if show:
                          print_matrix(m)
@@ -155,46 +155,43 @@ def perform_gauss_jordan_elimination(m, show):
             right_most_col = c
             lowest_row = r
         if show:
-            print "_swap", _swap, "_xor", _xor
+            print("_swap", _swap, "_xor", _xor)
         if _swap or _xor:
             r+=1
 
     if show:
-        print ""
-        print "Right Most Column", right_most_col, "lowest row", lowest_row
-        print "Row Echelon Form"
+        print("")
+        print("Right Most Column", right_most_col, "lowest row", lowest_row)
+        print("Row Echelon Form")
         print_matrix(m)
 
     if show:
-        print ""
-        print "Backward Substitution"
+        print("")
+        print("Backward Substitution")
 
     ## "Backward Substitution"
-    #r = len(m)-1
-    #if len(m)> len(m[0]):
     r = lowest_row
     for c in range(right_most_col, 0, -1):
         _xor  = False
         if show:
-            print "r", r, "c,", c, "value", m[r][c]
+            print("r", r, "c,", c, "value", m[r][c])
         for j in range(r-1, -1, -1):
             if m[r][c] == 1 and m[j][c] == 1:
                 _xor  = True
                 if show:
-                    print "XOR Row", r, m[r], "into Row", j, m[j]
+                    print("XOR Row", r, m[r], "into Row", j, m[j])
                 m = xor(m,r,j)
                 if show:
                     print_matrix(m)
 
         if show:
-            print "_xor", _xor
+            print("_xor", _xor)
         if m[r][c-1] == 0:
             r-=1
 
     if show:
-        print ""
-        print "Result"
+        print("")
+        print("Result")
         print_matrix(m)
-
 
     return m

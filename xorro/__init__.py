@@ -135,8 +135,8 @@ class Application:
                 countp     : Propagator simply counting assigned literals
                 up         : Propagator implementing unit propagation
                 none       : Do not propagate/translate xor constraints"""), self.__parse_approach)
-        options.add_flag(group, "gje", _dedent("""\
-        Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
+        #options.add_flag(group, "gje", _dedent("""\
+        #Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
 
     def main(self, prg, files):
         """
