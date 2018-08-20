@@ -73,7 +73,8 @@ class Propagate_GJE:
 
             ## Get the literals and parities
             for constraint in constraints:
-                # FIXME: this is strange because all constraints are represented as "odd" constraints
+                # FIXME: check if there is another way to do this. All constraints are represented as "odd" constraints but GJE only uses non-negative variables/literals.
+                # Somehow we need to convert xor constraints with a negative into a positive literal and invert the parity to build the matrix.
                 even = False
                 if constraint[0] < 0:
                     even = True

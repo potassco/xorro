@@ -111,7 +111,10 @@ def deduce_clause(m, lits):
 
 
 def perform_gauss_jordan_elimination(m, show):
-    """ Perform GJE using swap and xor operations """
+    """ 
+    Perform GJE using swap and xor operations.
+    Print options are available using the show flag for tests/debbuging to check the GJE Procedure.
+    """
     if show:
         print("Initial State")
         print_matrix(m)
@@ -119,8 +122,6 @@ def perform_gauss_jordan_elimination(m, show):
     if show:
         print("Forward Elimination")
     dimension = len(m)
-    #if len(m) > len(m[0]):
-    #    dimension = len(m[0])
     if show:
         print("len(m)", len(m), "len(m[0])", len(m[0]), "dimension", dimension)
 
