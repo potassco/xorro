@@ -15,7 +15,6 @@ from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .propagate_gje import Propagate_GJE
 from .reason_gje import Reason_GJE
-from .check_gje import Check_GJE
 
 import sys as _sys
 import clingo as _clingo
