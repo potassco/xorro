@@ -19,7 +19,7 @@ def solve(s, mode):
         transformer.transform([s], b.add)
     prg.ground([("base", [])])
 
-    xorro.translate(mode, prg)
+    xorro.translate(mode, prg, 0.0)
 
     prg.configuration.solve.models = 0
 

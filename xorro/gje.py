@@ -116,7 +116,7 @@ def perform_gauss_jordan_elimination(m, show):
     Print options are available using the show flag for tests/debbuging to check the GJE Procedure.
     """
     if show:
-        print "Initial State"
+        print("Initial State")
         print_matrix(m)
 
     r, c = 0, 0
@@ -124,13 +124,13 @@ def perform_gauss_jordan_elimination(m, show):
     cols = len(m[0])
 
     if show:
-        print "rows", rows, "cols", cols
+        print("rows", rows, "cols", cols)
 
     while True:
         _swap = False
 
         if show:
-            print "r", r, "c", c
+            print("r", r, "c", c)
 
         ## Check Pivot
         if m[r][c] == 0:
@@ -139,7 +139,7 @@ def perform_gauss_jordan_elimination(m, show):
                 if r != i and i > r: ## Avoid comparing the same row and do not swap to upper rows
                     if m[i][c] == 1 and not _swap: ## Check if a swap is not performed before in the same column
                         if show:
-                            print "Swapping", r, m[r], "and", i, m[i]
+                            print("Swapping", r, m[r], "and", i, m[i])
                         m = swap(m,r,i)
                         _swap = True
                         if show:
@@ -153,7 +153,7 @@ def perform_gauss_jordan_elimination(m, show):
                 if r != i: ## Avoid comparing the same row
                     if m[i][c] == 1:
                         if show:
-                            print "XOR Row", r, m[r], "into Row", i, m[i]
+                            print("XOR Row", r, m[r], "into Row", i, m[i])
                         m = xor(m,r,i)
                         if show:
                             print_matrix(m)

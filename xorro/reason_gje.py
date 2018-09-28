@@ -9,41 +9,6 @@ def xor_columns(col, parity):
         result.append(col[i] ^ parity[i])
     return result
 
-def reason_gje(columns, assignment):
-    state = {}
-    partial = []
-    deduced_literals = []
-
-    ## Get Partial Assignment
-    state["parity"] = columns["parity"]
-    for lit, column in columns.items():
-        if lit != "parity":
-            value = assignment.value(lit)
-            if value == None:
-                state[lit] = column
-            elif value == True:
-                state["parity"] = gje.xor_columns(column, state["parity"])
-                partial.append( lit)
-            elif value == False:
-                partial.append(-lit)
-
-    ## Build the matrix from columns state
-    matrix, xor_lits = gje.columns_state_to_matrix(state)
-
-    ## If there are more than unary xors perform GJE
-    if len(state) > 2:
-        matrix = gje.remove_rows_zeros(matrix)
-        matrix = gje.perform_gauss_jordan_elimination(matrix,False)
-
-    ## Check SATISFIABILITY
-    conflict = gje.check_sat(matrix)
-    if not conflict and xor_lits:
-        ## Imply literals
-        deduced_literals = gje.deduce_clause(matrix, xor_lits)
-
-    return conflict, partial, deduced_literals
-
-
 def lits_to_binary(columns, lits, constraint):
     for i in range(len(lits)):
         if lits[i] in constraint:
@@ -123,7 +88,7 @@ class XOR:
         ## If there are more than unary xors perform GJE
         if len(state) > 2 and assigned_lits_perc >= cutoff:
             matrix = gje.remove_rows_zeros(matrix)
-            matrix = gje.perform_gauss_jordan_elimination(matrix)
+            matrix = gje.perform_gauss_jordan_elimination(matrix, False)
 
         ## Check SATISFIABILITY
         conflict = gje.check_sat(matrix)
