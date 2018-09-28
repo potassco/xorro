@@ -3,7 +3,7 @@ from . import gje
 from itertools import chain
 import clingo
 
-def reason_gje(columns, assignment):
+def reason_gje(columns, assignment, n_lits, cutoff):
     state = {}
     partial = []
     deduced_literals = []
@@ -24,8 +24,10 @@ def reason_gje(columns, assignment):
     ## Build the matrix from columns state
     matrix, xor_lits = gje.columns_state_to_matrix(state)
 
+    ## Percentage of assigned literals
+    assigned_lits_perc = 1.0-float("%.1f"%(len(xor_lits)/n_lits))
     ## If there are more than unary xors perform GJE
-    if len(state) > 2:
+    if len(state) > 2 and assigned_lits_perc >= cutoff:
         matrix = gje.remove_rows_zeros(matrix)
         matrix = gje.perform_gauss_jordan_elimination(matrix,False)
 
@@ -50,8 +52,10 @@ def lits_to_binary(columns, lits, constraint):
 
 
 class Propagate_GJE:
-    def __init__(self):
+    def __init__(self, cutoff):
         self.__states  = []
+        self.__cutoff = cutoff
+        self.__n_literals = 0
 
     def init(self, init):
         """
@@ -63,8 +67,17 @@ class Propagate_GJE:
 
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
         literals = []
+        for atom in init.symbolic_atoms.by_signature("__parity",3):
+            lit = init.solver_literal(atom.literal)
+            value = init.assignment.value(lit)
+            if value == None and abs(lit) not in literals:
+                literals.append(abs(lit))
+        
         ## Get the constraints
         ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
+        # Number of literals in GJ Matrix
+        self.__n_literals = float(len(literals))
+        
         if ret is not None:
             # NOTE: whether facts should be handled here is up to question
             #       this should only be necessary if the propagator is to be used standalone
@@ -78,9 +91,6 @@ class Propagate_GJE:
                 even = False
                 if constraint[0] < 0:
                     even = True
-                for lit in constraint:
-                    if abs(lit) not in literals:
-                        literals.append(abs(lit))
                 for thread_id in range(init.number_of_threads):
                     if even:
                         self.__states[thread_id].setdefault("parity", []).append(0)
@@ -95,15 +105,19 @@ class Propagate_GJE:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
             pass
 
+
     def check(self, control):
         """
         Check if current assignment is conflict-free, detect a conflict or deduce literals
         by doing Gauss-Jordan Elimination
         """
+        n = self.__n_literals
+        cutoff = self.__cutoff
+        
         if self.__states[control.thread_id]:
             columns = self.__states[control.thread_id]
             ## GJE
-            conflict, partial, clause = reason_gje(columns, control.assignment)
+            conflict, partial, clause = reason_gje(columns, control.assignment, n, cutoff)
             if clause is not None:
                 for lit in clause:
                     if not control.add_nogood(partial+[-lit]) or not control.propagate():

@@ -16,35 +16,6 @@ def get_parity(par):
 def invert_parity(par):
     return int(par) ^ 1
 
-def symbols_to_xor(init):
-    constraints = {}
-    xor_literals = []
-
-    for atom in init.symbolic_atoms.by_signature("__parity",2):
-        cid = atom.symbol.arguments[0].number
-        par = atom.symbol.arguments[1].name
-        constraints[cid] = {"parity": get_parity(par), "literals": set()}
-
-    for atom in init.symbolic_atoms.by_signature("__parity",3):
-        cid = atom.symbol.arguments[0].number
-        lit = init.solver_literal(atom.literal)
-        ass = init.assignment
-
-        if ass.is_true(lit):
-            constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
-        elif not ass.is_false(lit):
-            literals = constraints[cid]["literals"]
-            if lit in literals:
-                literals.remove(lit)
-            elif -lit in literals:
-                literals.remove(-lit)
-                constraints[cid]["parity"] = invert_parity(constraints[cid]["parity"])
-            else:
-                constraints[cid]["literals"].add(lit)
-                if lit not in xor_literals:
-                    xor_literals.append(lit)
-    return constraints, sorted(xor_literals)
-
 def default_get_lit(init):
     value = init.assignment.value
     def get_lit(atom):
@@ -73,7 +44,7 @@ def symbols_to_xor_r(symbolic_atoms, get_lit):
                       truth value.
     """
     constraints = {}
-
+    lits = []
     for atom in symbolic_atoms.by_signature("__parity",2):
         cid = atom.symbol.arguments[0].number
         par = atom.symbol.arguments[1].name
@@ -92,8 +63,14 @@ def symbols_to_xor_r(symbolic_atoms, get_lit):
                 constraint.literals.remove(-lit)
                 constraint.parity = invert_parity(constraint.parity)
             else:
-                constraint.literals.add(lit)
-
+                if lit < 0:
+                    constraint.literals.add(abs(lit))
+                    constraint.parity = invert_parity(constraint.parity)
+                else:
+                    constraint.literals.add(lit)
+                if abs(lit) not in lits:
+                    lits.append(abs(lit))
+                
     facts = set()
     result = []
     for constraint in constraints.values():

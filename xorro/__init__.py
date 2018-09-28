@@ -14,6 +14,8 @@ from . import transformer as _tf
 from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .propagate_gje import Propagate_GJE
+from .reason_gje import Reason_GJE
+from .check_gje import Check_GJE
 
 import sys as _sys
 import clingo as _clingo
@@ -50,7 +52,7 @@ class List:
     def translate(self, backend):
         return util.reduce(lambda l, r: translate_binary_xor(backend, l, r), self.__literals)
 
-def translate(mode, prg):
+def translate(mode, prg, cutoff):
     if mode == "count":
         prg.add("__count", [], _dedent("""\
             :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
@@ -66,7 +68,10 @@ def translate(mode, prg):
 
     elif mode == "gje":
         prg.register_propagator(WatchesUnitPropagator())
-        prg.register_propagator(Propagate_GJE())
+        prg.register_propagator(Propagate_GJE(cutoff))
+
+    elif mode == "reason-gje":
+        prg.register_propagator(Reason_GJE(cutoff))
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
@@ -111,14 +116,22 @@ class Application:
         self.program_name = name
         self.version = "1.0"
         self.__approach = "count"
+        self.__cutoff = 0.0
 
     def __parse_approach(self, value):
         """
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje", "reason-gje"]
 
+    def __parse_cutoff(self, value):
+        """
+        Parse cutoff argument.
+        """
+        self.__cutoff = float(value)
+        return self.__cutoff >=0.0 and self.__cutoff <=1.0
+    
     def register_options(self, options):
         """
         Extension point to add options to xorro like choosing the
@@ -135,6 +148,10 @@ class Application:
                 countp     : Propagator simply counting assigned literals
                 up         : Propagator implementing unit propagation
                 none       : Do not propagate/translate xor constraints"""), self.__parse_approach)
+
+        options.add(group, "cutoff", _dedent("""\
+        Cutoff percentage of literals assigned before GJE [0-1]
+                """), self.__parse_cutoff)
         #options.add_flag(group, "gje", _dedent("""\
         #Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
 
@@ -150,7 +167,7 @@ class Application:
 
         prg.ground([("base", [])])
 
-        translate(self.__approach, prg)
+        translate(self.__approach, prg, self.__cutoff)
 
         prg.solve()
 

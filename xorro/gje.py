@@ -116,83 +116,55 @@ def perform_gauss_jordan_elimination(m, show):
     Print options are available using the show flag for tests/debbuging to check the GJE Procedure.
     """
     if show:
-        print("Initial State")
+        print "Initial State"
         print_matrix(m)
 
-    if show:
-        print("Forward Elimination")
-    dimension = len(m)
-    if show:
-        print("len(m)", len(m), "len(m[0])", len(m[0]), "dimension", dimension)
+    r, c = 0, 0
+    rows = len(m)
+    cols = len(m[0])
 
-    ## "Forward Elimination"
-    r = 0
-    right_most_col = 0
-    lowest_row = 0
-    for c in range(len(m[0])-1):
+    if show:
+        print "rows", rows, "cols", cols
+
+    while True:
         _swap = False
-        _xor  = False
-        if show:
-            print("r", r, "c", c, "value", m[r][c])
-        for j in range(r+1, dimension):
-            if m[r][c] == 0 and m[j][c] == 1:
-                if show:
-                    print("Swapping", m[r], "and", m[j])
-                m = swap(m,r,j)
-                _swap = True
-                if show:
-                    print_matrix(m)
 
-            if m[r][c] == 1:
-                _xor = True
-                if m[j][c] == 1:
-                    if show:
-                        print("XOR Row", r, m[r], "into Row", j, m[j])
-                    m = xor(m,r,j)
-                    if show:
-                         print_matrix(m)
+        if show:
+            print "r", r, "c", c
+
+        ## Check Pivot
+        if m[r][c] == 0:
+            ## Swap
+            for i in range(rows):
+                if r != i and i > r: ## Avoid comparing the same row and do not swap to upper rows
+                    if m[i][c] == 1 and not _swap: ## Check if a swap is not performed before in the same column
+                        if show:
+                            print "Swapping", r, m[r], "and", i, m[i]
+                        m = swap(m,r,i)
+                        _swap = True
+                        if show:
+                            print_matrix(m)
+            if not _swap: ## If not swap, means there is no 1 to swap, so go to the next column
+                c+=1
 
         if m[r][c] == 1:
-            right_most_col = c
-            lowest_row = r
-        if show:
-            print("_swap", _swap, "_xor", _xor)
-        if _swap or _xor:
-            r+=1
+            ## XOR
+            for i in range(rows):
+                if r != i: ## Avoid comparing the same row
+                    if m[i][c] == 1:
+                        if show:
+                            print "XOR Row", r, m[r], "into Row", i, m[i]
+                        m = xor(m,r,i)
+                        if show:
+                            print_matrix(m)
 
-    if show:
-        print("")
-        print("Right Most Column", right_most_col, "lowest row", lowest_row)
-        print("Row Echelon Form")
-        print_matrix(m)
+        ## Increase row and column
+        r+=1
+        c+=1
 
-    if show:
-        print("")
-        print("Backward Substitution")
-
-    ## "Backward Substitution"
-    r = lowest_row
-    for c in range(right_most_col, 0, -1):
-        _xor  = False
-        if show:
-            print("r", r, "c,", c, "value", m[r][c])
-        for j in range(r-1, -1, -1):
-            if m[r][c] == 1 and m[j][c] == 1:
-                _xor  = True
-                if show:
-                    print("XOR Row", r, m[r], "into Row", j, m[j])
-                m = xor(m,r,j)
-                if show:
-                    print_matrix(m)
-
-        if show:
-            print("_xor", _xor)
-        if m[r][c-1] == 0:
-            r-=1
-
-    if show:
-        print("")
-        print("Result")
-        print_matrix(m)
-
+        ## break condition if all rows or all columns (except the augmented column are treated)
+        if r == rows or c >= cols-1:
+            break
+        
     return m
+
