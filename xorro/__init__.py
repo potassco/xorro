@@ -116,6 +116,9 @@ class Application:
         self.version = "1.0"
         self.__approach = "count"
         self.__cutoff = 0.0
+        self.__s = 0
+        self.__q = 0.5
+        self.__sampling = _clingo.Flag(False)
 
     def __parse_approach(self, value):
         """
@@ -130,6 +133,20 @@ class Application:
         """
         self.__cutoff = float(value)
         return self.__cutoff >=0.0 and self.__cutoff <=1.0
+
+    def __parse_s(self, value):
+        """
+        Parse s value as the number of xor constraints.
+        """
+        self.__s = int(value)
+        return self.__s >=0
+
+    def __parse_q(self, value):
+        """
+        Parse the q argument for random xor constraints.
+        """
+        self.__q = float(value)
+        return self.__q >=0.0 and self.__q <=1.0
     
     def register_options(self, options):
         """
@@ -151,21 +168,38 @@ class Application:
         options.add(group, "cutoff", _dedent("""\
         Cutoff percentage of literals assigned before GJE [0-1]
                 """), self.__parse_cutoff)
-        #options.add_flag(group, "gje", _dedent("""\
-        #Enable Gauss-Jordan-Elimination-based propagation."""), _clingo.Flag(self.__gje))
+
+        options.add_flag(group, "sampling", _dedent("""\
+        Enable sampling by generating random xor constraints
+                """), self.__sampling)
+
+        options.add(group, "s", _dedent("""\
+        Number of xor constraints to generate. Default=0, log(#atoms)
+                """), self.__parse_s)
+
+        options.add(group, "q", _dedent("""\
+        Density of each xor constraint. Default=0.5
+                """), self.__parse_q)
 
     def main(self, prg, files):
         """
         Implements the rewriting and solving loop.
         """
+        
+        ## If sampling flag enabled
+        if self.__sampling.value:
+            s = self.__s
+            q = self.__q
+            util.generate_random_xors(prg, files, s, q)
+            files.append("examples/xors.lp")
+        
         with prg.builder() as b:
             files = [open(f) for f in files]
             if len(files) == 0:
                 files.append(_sys.stdin)
             _tf.transform((f.read() for f in files), b.add)
-
+        
         prg.ground([("base", [])])
-
         translate(self.__approach, prg, self.__cutoff)
 
         prg.solve()

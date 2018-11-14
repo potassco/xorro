@@ -2,6 +2,10 @@ from collections import namedtuple
 from itertools import *
 from functools import *
 import sys
+from textwrap import dedent as _dedent
+from math import log
+from random import randint, sample
+
 
 def attrdef(m, a, b):
     return getattr(m, a if hasattr(m, a) else b)
@@ -15,6 +19,10 @@ def get_parity(par):
 
 def invert_parity(par):
     return int(par) ^ 1
+
+def get_str_parity(par):
+    if par == 1: return "odd"
+    else: return "even"
 
 def default_get_lit(init):
     value = init.assignment.value
@@ -88,3 +96,43 @@ def symbols_to_xor_r(symbolic_atoms, get_lit):
                 facts.add(literals[0])
 
     return result, sorted(facts)
+
+
+def generate_random_xors(prg, files, s, q):
+    """
+    Of course adding the theory may not be the best way to do it. This is just a hack
+    Maybe using the AST is a better alternative to extract the symbols to build the xor constraints.
+    In the end, we just need the symbols to write a file with random constraints. 
+    """
+    for f in files:
+        prg.load(f)
+
+    prg.add("base", [], _dedent("""\
+      #theory parity { 
+        element {}; 
+        &odd/0 : element, directive; 
+        &even/0 : element, directive }.
+      """))
+
+    prg.ground([("base", [])])
+
+    estimated_s = s
+    constraints = []
+    parities = []
+    xors  = ""
+    symbols = [atom.symbol for atom in prg.symbolic_atoms if atom.is_fact is False and "__parity" not in str(atom.symbol)]
+    if len(symbols) > 0:
+        # Randomly create s XOR constraints with density q
+        if s == 0:
+            estimated_s = int(log(len(symbols) + 1, 2))
+        print("Random XOR Constraints: %s"%estimated_s)
+        for i in range(estimated_s):
+            range_ = int((len(symbols))*q)
+            size = randint(range_, range_)
+            terms = " ; ".join(str(x)+":"+str(x) for x in sorted(sample(symbols, size)))
+            xors  += "&%s{ %s }. \n\n"%(get_str_parity(randint(0,1)), terms)
+            
+        print(xors)
+        file_ = open("examples/xors.lp","w")
+        file_.write(xors)
+        file_.close()
