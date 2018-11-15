@@ -131,8 +131,9 @@ def generate_random_xors(prg, files, s, q):
             size = randint(range_, range_)
             terms = " ; ".join(str(x)+":"+str(x) for x in sorted(sample(symbols, size)))
             xors  += "&%s{ %s }. \n\n"%(get_str_parity(randint(0,1)), terms)
-            
-        print(xors)
+
+        ## This print should be flag enabled
+        #print(xors)
         file_ = open("examples/xors.lp","w")
         file_.write(xors)
         file_.close()
