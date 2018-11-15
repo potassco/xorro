@@ -15,7 +15,7 @@ from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .propagate_gje import Propagate_GJE
 from .reason_gje import Reason_GJE
-
+from random import sample
 import sys as _sys
 import clingo as _clingo
 from textwrap import dedent as _dedent
@@ -202,7 +202,27 @@ class Application:
         prg.ground([("base", [])])
         translate(self.__approach, prg, self.__cutoff)
 
-        prg.solve()
+        if self.__sampling.value:
+            models = []
+            selected = []
+            requested_models = int(str(prg.configuration.solve.models))
+            prg.configuration.solve.models = 0
+            ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
+            if requested_models == -1:
+                requested_models = 1
+            elif requested_models == 0:
+                requested_models = len(models)
+            if str(ret) == "SAT":
+                if requested_models > len(models):
+                    requested_models = len(models)
+                selected = sample(range(1, len(models)+1), requested_models)
+                print("")
+                print("Sampled Answer Set(s): %s"%str(selected)[1:-1])
+                for i in range(requested_models):
+                    print("Answer: %s"%selected[i])
+                    print(' '.join(map(str, sorted(models[selected[i]-1]))))
+        else:
+            prg.solve()
 
 def main():
     """
