@@ -3,7 +3,7 @@
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/potassco/xorro)
 
 > A tool for solving ASP programs with XOR (parity) constraints towards generating (near-)uniform answer sets.
-> A fully re-implemented and extended version of the original `xorro` prototype is presented. This new version is built under clingo 5 infrastructure with Python support.
+> A fully re-implemented and extended version of the original `xorro` prototype is presented. This new version is built under `clingo` 5 infrastructure with Python support.
 
 ## Description
 `xorro` is a tool that takes the advantage of the flexible ASP infrastructure
@@ -60,12 +60,12 @@ For example, let us express the XOR constraints `p(1) ⊕ ⊥`, and `p(2) ⊕ p(
  &odd{ 1:p(1) }.
 &even{ X:p(X), X>1 }.
 ```
-The first constraint aims at filtering stable models that do not contain p(1),
-while the second requires that either none or both atoms p(2) and p(3) are true. </br>
+The first constraint aims at filtering stable models that do not contain `p(1)`,
+while the second requires that either none or both atoms `p(2)` and `p(3)` are true. </br>
 The program obtained after running the XOR constraints with the choice rule ‘{p(1..3)}.’,
-results in two stable models, viz. {p(1)} and {p(1), p(2), p(3)}. </br>
+results in two stable models, viz. `{p(1)}`, and `{p(1), p(2), p(3)}`. </br>
 
-It is important to remark that the scope for the XOR constraints presented in this version of ’xorro’
+It is important to remark that the scope for the XOR constraints presented in this version of `xorro`
 corresponds to directive statements,
 meaning they can neither occur in the body nor in the head of a rule
 and thus act as meta statements instructing the ASP system to eliminate stable models violating the parity.
@@ -84,11 +84,6 @@ xorro --help
 xorro examples/test.lp --approach=count
 ```
 
-To enable the sampling features of `xorro`
-To use `xorro` directly from source run `python -m xorro` from the project's root directory and
-follow the standard-like clingo call:
-`usage: xorro [number] [options] [files]`
-
 To enable the sampling features of `xorro`, run the full command:
 ```
 xorro --help
@@ -96,6 +91,7 @@ xorro examples/test.lp --approach=count [--sampling --s=<n> --q<n>]
 ```
 
 The sampling options of `xorro` are shown next:
+
 | command | description |
 |---|---|
 | `--sampling` | Enable sampling features. |
@@ -201,7 +197,7 @@ The sampling feature of `xorro` asks for all the remaining models after applying
 
 ## Contributors
 
-* Flavio Everardo - Get help/report bugs via flavio.everardo@cs.uni-potsdam.de
+* Flavio Everardo, Roland Kaminski - Get help/report bugs via flavio.everardo@cs.uni-potsdam.de </br>
 The original prototype of `xorro` was implemented by Marius Lindauer.
 
 ## License
