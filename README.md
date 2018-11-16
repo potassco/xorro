@@ -1,6 +1,9 @@
 # xorro
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/potassco/xorro)
+[![Build Status](https://travis-ci.org/doge/wow.svg)](https://travis-ci.org/potassco/xorro/builds/456037987?utm_source=github_status&utm_medium=notification)
+[![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
+
 
 > A tool for solving ASP programs with XOR (parity) constraints towards generating (near-)uniform answer sets.
 > A fully re-implemented and extended version of the original `xorro` prototype is presented. This new version is built under `clingo` 5 infrastructure with Python support.
