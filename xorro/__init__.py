@@ -157,36 +157,32 @@ class Application:
         group = "Xorro Options"
         options.add(group, "approach", _dedent("""\
         Approach to handle XOR constraints [count]
-              <arg>: {count|list|tree|countp|up|none}
+              <arg>: {count|list|tree|countp|up|gje}
                 count      : Add count aggregates modulo 2
                 {list,tree}: Translate binary xor operators to rules
                              (binary operators are arranged in list/tree)
                 countp     : Propagator simply counting assigned literals
                 up         : Propagator implementing unit propagation
-                none       : Do not propagate/translate xor constraints"""), self.__parse_approach)
-
+                gje        : Propagator implementing Gauss-Jordan Elimination"""), self.__parse_approach)
+        
         options.add(group, "cutoff", _dedent("""\
         Cutoff percentage of literals assigned before GJE [0-1]
                 """), self.__parse_cutoff)
 
         options.add_flag(group, "sampling", _dedent("""\
-        Enable sampling by generating random xor constraints
-                """), self.__sampling)
+        Enable sampling by generating random xor constraints"""), self.__sampling)
 
         options.add(group, "s", _dedent("""\
-        Number of xor constraints to generate. Default=0, log(#atoms)
-                """), self.__parse_s)
+        Number of xor constraints to generate. Default=0, log(#atoms)"""), self.__parse_s)
 
         options.add(group, "q", _dedent("""\
-        Density of each xor constraint. Default=0.5
-                """), self.__parse_q)
+        Density of each xor constraint. Default=0.5"""), self.__parse_q)
 
     def main(self, prg, files):
         """
         Implements the rewriting and solving loop.
         """
-        
-        ## If sampling flag enabled
+
         if self.__sampling.value:
             s = self.__s
             q = self.__q
@@ -215,7 +211,7 @@ class Application:
             if str(ret) == "SAT":
                 if requested_models > len(models):
                     requested_models = len(models)
-                selected = sample(range(1, len(models)+1), requested_models)
+                selected = sorted(sample(range(1, len(models)+1), requested_models))
                 print("")
                 print("Sampled Answer Set(s): %s"%str(selected)[1:-1])
                 for i in range(requested_models):
