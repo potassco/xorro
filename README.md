@@ -1,7 +1,7 @@
 # xorro
 
 [![standard-readme compliant](https://img.shields.io/badge/readme%20style-standard-brightgreen.svg?style=flat-square)](https://github.com/potassco/xorro)
-[![Build Status](https://travis-ci.org/doge/wow.svg)](https://travis-ci.org/potassco/xorro/builds/456037987?utm_source=github_status&utm_medium=notification)
+[![Build Status](https://travis-ci.org/potassco/xorro.svg?branch=master)](https://travis-ci.org/potassco/xorro)
 [![License](http://img.shields.io/:license-mit-blue.svg)](http://doge.mit-license.org)
 
 
