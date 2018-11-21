@@ -196,6 +196,7 @@ $ cat examples/xors.lp
 From the eight answer sets remaining after solving the program with the  XOR constraints mentioned above, the sampled answer sets were the number 4th and the 7th.
 
 The sampling feature of `xorro` asks for all the remaining models after applying XOR constraints. If the requested models by the user are less than the remaining models, `xorro` will pick randomly n answer sets.
+To show only the sampled answers use the clingo option `--outf=3`.
 
 
 ## Contributors
