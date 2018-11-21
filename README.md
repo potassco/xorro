@@ -200,9 +200,12 @@ The sampling feature of `xorro` asks for all the remaining models after applying
 
 ## Contributors
 
-* Flavio Everardo, Roland Kaminski - Get help/report bugs via flavio.everardo@cs.uni-potsdam.de </br>
+* Flavio Everardo, Roland Kaminski - Get help/report bugs via the [issue tracker] </br>
 The original prototype of `xorro` was implemented by Marius Lindauer.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+
+[issue tracker]: https://github.com/potassco/xorro/issues
