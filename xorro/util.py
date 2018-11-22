@@ -118,7 +118,6 @@ def generate_random_xors(prg, files, s, q):
     xors  = ""
     symbols = [atom.symbol for atom in prg.symbolic_atoms if atom.is_fact is False and "__parity" not in str(atom.symbol)]
     if len(symbols) > 0:
-        # Randomly create s XOR constraints with density q
         if s == 0:
             estimated_s = int(log(len(symbols) + 1, 2))
         print("Random XOR Constraints: %s"%estimated_s)
@@ -126,10 +125,9 @@ def generate_random_xors(prg, files, s, q):
             range_ = int((len(symbols))*q)
             size = randint(range_, range_)
             terms = " ; ".join(str(x)+":"+str(x) for x in sorted(sample(symbols, size)))
-            xors  += "&%s{ %s }. \n\n"%(get_str_parity(randint(0,1)), terms)
+            xors  += "&%s{ %s }.\n"%(get_str_parity(randint(0,1)), terms)
 
-        ## This print should be flag enabled
-        #print(xors)
         file_ = open("examples/xors.lp","w")
         file_.write(xors)
         file_.close()
+    return xors

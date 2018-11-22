@@ -126,6 +126,7 @@ class Application:
         self.__s = 0
         self.__q = 0.5
         self.__sampling = _clingo.Flag(False)
+        self.__display  = _clingo.Flag(False)
 
     def __parse_approach(self, value):
         """
@@ -185,6 +186,9 @@ class Application:
         options.add(group, "q", _dedent("""\
         Density of each xor constraint. Default=0.5"""), self.__parse_q)
 
+        options.add_flag(group, "display", _dedent("""\
+        Display the random xor constraints used in sampling"""), self.__display)
+
     def main(self, prg, files):
         """
         Implements the rewriting and solving loop.
@@ -193,7 +197,9 @@ class Application:
         if self.__sampling.value:
             s = self.__s
             q = self.__q
-            util.generate_random_xors(prg, files, s, q)
+            xors = util.generate_random_xors(prg, files, s, q)
+            if self.__display.value:
+                print(xors)
             files.append("examples/xors.lp")
 
             transform(prg,files)
