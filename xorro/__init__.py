@@ -26,6 +26,13 @@ def translate_binary_xor(backend, lhs, rhs):
     backend.add_rule([aux], [-lhs,  rhs])
     return aux
 
+def transform(prg, files):
+    with prg.builder() as b:
+        files = [open(f) for f in files]
+        if len(files) == 0:
+            files.append(_sys.stdin)
+        _tf.transform((f.read() for f in files), b.add)
+            
 class Leaf:
     def __init__(self, atom):
         self.__atom = atom
@@ -188,17 +195,11 @@ class Application:
             q = self.__q
             util.generate_random_xors(prg, files, s, q)
             files.append("examples/xors.lp")
-        
-        with prg.builder() as b:
-            files = [open(f) for f in files]
-            if len(files) == 0:
-                files.append(_sys.stdin)
-            _tf.transform((f.read() for f in files), b.add)
-        
-        prg.ground([("base", [])])
-        translate(self.__approach, prg, self.__cutoff)
 
-        if self.__sampling.value:
+            transform(prg,files)
+            prg.ground([("base", [])])
+            translate(self.__approach, prg, self.__cutoff)
+
             models = []
             selected = []
             requested_models = int(str(prg.configuration.solve.models))
@@ -218,6 +219,9 @@ class Application:
                     print("Answer: %s"%selected[i])
                     print(' '.join(map(str, sorted(models[selected[i]-1]))))
         else:
+            transform(prg,files)
+            prg.ground([("base", [])])
+            translate(self.__approach, prg, self.__cutoff)
             prg.solve()
 
 def main():

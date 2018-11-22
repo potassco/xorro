@@ -38,10 +38,6 @@ class _XORConstraint:
 
 def symbols_to_xor_r(symbolic_atoms, get_lit):
     """
-    This is a refactored version of symbols_to_xor, which should be used
-    instead of symbols_to_xor. When all occurrences have been replaced,
-    symbols_to_xor should be removed.
-
     Returns None if the constraints are trivially unsatisfiable, otherwise
     returns a list of xor constraints and a list of facts. A xor constraint is
     represented as a list of literals.
