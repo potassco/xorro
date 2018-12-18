@@ -167,27 +167,26 @@ class Application:
         Approach to handle XOR constraints [count]
               <arg>: {count|list|tree|countp|up|gje}
                 count      : Add count aggregates modulo 2
-                {list,tree}: Translate binary xor operators to rules
+                {list,tree}: Translate binary XOR operators to rules
                              (binary operators are arranged in list/tree)
                 countp     : Propagator simply counting assigned literals
                 up         : Propagator implementing unit propagation
                 gje        : Propagator implementing Gauss-Jordan Elimination"""), self.__parse_approach)
         
         options.add(group, "cutoff", _dedent("""\
-        Cutoff percentage of literals assigned before GJE [0-1]
-                """), self.__parse_cutoff)
+        Percentage of literals assigned before GJE [0-1]"""), self.__parse_cutoff)
 
         options.add_flag(group, "sampling", _dedent("""\
-        Enable sampling by generating random xor constraints"""), self.__sampling)
+        Enable sampling by generating random XOR constraints"""), self.__sampling)
 
         options.add(group, "s", _dedent("""\
-        Number of xor constraints to generate. Default=0, log(#atoms)"""), self.__parse_s)
+        Number of XOR constraints to generate. Default=0, log(#atoms)"""), self.__parse_s)
 
         options.add(group, "q", _dedent("""\
-        Density of each xor constraint. Default=0.5"""), self.__parse_q)
+        Density of each XOR constraint. Default=0.5"""), self.__parse_q)
 
         options.add_flag(group, "display", _dedent("""\
-        Display the random xor constraints used in sampling"""), self.__display)
+        Display the random XOR constraints used in sampling"""), self.__display)
 
     def main(self, prg, files):
         """
