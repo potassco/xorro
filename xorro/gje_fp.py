@@ -39,7 +39,6 @@ def reason_gje(columns, assignment, n_lits, cutoff):
 
     return conflict, partial, deduced_literals
 
-
 def lits_to_binary(columns, lits, constraint):
     for i in range(len(lits)):
         if lits[i] in constraint:
@@ -56,6 +55,7 @@ class Propagate_GJE:
         self.__states  = []
         self.__cutoff = cutoff
         self.__n_literals = 0
+        self.__counter = 0
 
     def init(self, init):
         """
@@ -105,7 +105,6 @@ class Propagate_GJE:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
             pass
 
-
     def check(self, control):
         """
         Check if current assignment is conflict-free, detect a conflict or deduce literals
@@ -113,6 +112,7 @@ class Propagate_GJE:
         """
         n = self.__n_literals
         cutoff = self.__cutoff
+        counter = self.__counter
         
         if self.__states[control.thread_id]:
             columns = self.__states[control.thread_id]
@@ -125,5 +125,3 @@ class Propagate_GJE:
             if conflict:
                 if not control.add_nogood(partial) or not control.propagate():
                     return
-
-

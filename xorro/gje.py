@@ -18,8 +18,8 @@ deduced_clause -- Obtain implications after GJE
 import numpy as np
 
 def print_matrix(m):
-    for i in range(len(m)):
-        print(m[i])
+    for row in m:
+        print(row)
     print("")
     
 def swap(m, r1, r2):
@@ -81,7 +81,6 @@ def check_sat(m):
                 break 
     return conflict
 
-
 def deduce_clause(m, lits):
     """ If no conflict, deduce the implications after GJE """
     clause = []
@@ -124,13 +123,13 @@ def perform_gauss_jordan_elimination(m, show):
     cols = len(m[0])
 
     if show:
-        print("rows", rows, "cols", cols)
+        print("rows: %s cols: %s"%(rows, cols))
 
     while True:
         _swap = False
 
         if show:
-            print("r", r, "c", c)
+            print("r %s c %s"%(r, c))
 
         ## Check Pivot
         if m[r][c] == 0:
@@ -139,8 +138,11 @@ def perform_gauss_jordan_elimination(m, show):
                 if r != i and i > r: ## Avoid comparing the same row and do not swap to upper rows
                     if m[i][c] == 1 and not _swap: ## Check if a swap is not performed before in the same column
                         if show:
-                            print("Swapping", r, m[r], "and", i, m[i])
-                        m = swap(m,r,i)
+                            print("Swapping %s %s and %s %s"%(r, m[r], i, m[i]))
+                        #m = swap(m,r,i)
+                        temp  = m[r]
+                        m[r]  = m[i]
+                        m[i]  = temp
                         _swap = True
                         if show:
                             print_matrix(m)
@@ -153,8 +155,9 @@ def perform_gauss_jordan_elimination(m, show):
                 if r != i: ## Avoid comparing the same row
                     if m[i][c] == 1:
                         if show:
-                            print("XOR Row", r, m[r], "into Row", i, m[i])
-                        m = xor(m,r,i)
+                            print("XOR Row %s: %s  into Row %s: %s"%(r, m[r], i, m[i]))
+                        for e in range(len(m[0])):
+                            m[i][e] ^= m[r][e]
                         if show:
                             print_matrix(m)
 
@@ -168,3 +171,113 @@ def perform_gauss_jordan_elimination(m, show):
         
     return m
 
+"""
+Updated methods using only numpy
+"""
+def lits_to_binary_(constraint, literals):
+    row = []
+    for lit in literals:
+        if lit in constraint or -lit in constraint:
+            row.append(1)
+        else:
+            row.append(0)
+    return row
+
+def remove_rows_zeros_(m):
+    matrix = []
+    for row in m:
+        if np.sum(row) > 0:
+            matrix.append(row)
+    return np.array(matrix)
+
+def xor_(l1, l2):
+    """ XOR a column with the parity values from the state  """
+    return np.bitwise_xor(l1,l2)
+
+def check_sat_(m, lits):
+    """ Check the matrix satisfiability wrt the augmented (parity) column  and get implications if no conflict """
+    conflict = False
+    clause   = []
+
+    ## If only augmented column remains
+    if len(m[0]) == 1:
+        if np.sum(m[:,0]) > 0:
+            conflict = True
+    else:
+        ## Check if exist empty odd which means UNSAT i.e. a conflict
+        for row in m[::-1]:
+            if row[-1] == 1 and np.sum(row[:-1]) == 0:
+                ## UNSAT
+                conflict = True                        
+                break
+            elif np.sum(row[:-1]) == 1:
+                ## Unit XOR
+                i, = np.where(row[:-1] == 1)[0]
+                if row[-1] == 1:
+                    if  lits[i] not in clause:
+                        clause.append( lits[i])
+                else:
+                    if -lits[i] not in clause:
+                        clause.append(-lits[i])
+    return conflict, clause
+
+def perform_gauss_jordan_elimination_(m, show):
+    """ 
+    Perform GJE using swap and xor operations.
+    Print options are available using the show flag for tests/debbuging to check the GJE Procedure.
+    """
+    if show:
+        print m
+        print("Initial State")
+        print_matrix(m)
+    
+    r = 0
+    c = 0
+    rows, cols = len(m), len(m[0])
+
+    if show:
+        print("rows: %s cols: %s"%(rows, cols))
+
+    while True:
+        if show:
+            print("r %s c %s"%(r, c))
+
+        ## Check Pivot
+        _swap = False
+        if m[r,c] == 0:
+            for i in range(r+1,rows):
+                if m[i,c] == 1:# If new pivot found... swap
+                    if show:
+                        print("Swapping %s %s and %s %s"%(r, m[r], i, m[i]))
+                    m[[i,r]] = m[[r,i]] ## Swap
+                    _swap = True
+                    if show:
+                        print_matrix(m)
+                    break # No more swapping in this column
+            if not _swap: ## No swap, move to the next column, same row
+                c+=1
+
+        if m[r,c] == 1:
+            ## XOR
+            for i in range(rows):
+                indexes = np.setdiff1d(np.where(m[:,c] == 1),r) # Get all the ones to XOR in the same column
+                for i in indexes:
+                    m[i] = np.bitwise_xor(m[i],m[r]) # Bitwise XOR
+                    if show:
+                        print("XOR Row %s: %s  into Row %s: %s"%(r, m[r], i, m[i]))
+                if show:
+                    print_matrix(m)
+
+        ## Increase row and column
+        r+=1
+        c+=1
+
+        ## break condition if all rows or all columns (except the augmented column) are treated
+        if r == rows or c >= cols-1:
+            break
+
+    if show:
+        print("Final State")
+        print_matrix(m)
+        
+    return m

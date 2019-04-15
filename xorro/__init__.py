@@ -13,8 +13,10 @@ from . import util
 from . import transformer as _tf
 from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
-from .propagate_gje import Propagate_GJE
-from .reason_gje import Reason_GJE
+from .gje_fp import Propagate_GJE
+from .gje_prop import Reason_GJE
+from .gje_prop_n import State_GJE
+from .gje_state_check_n import State_Check_GJE
 from random import sample
 import sys as _sys
 import clingo as _clingo
@@ -72,12 +74,18 @@ def translate(mode, prg, cutoff):
     elif mode == "up":
         prg.register_propagator(WatchesUnitPropagator())
 
-    elif mode == "gje":
+    elif mode == "gje-fp":
         prg.register_propagator(WatchesUnitPropagator())
         prg.register_propagator(Propagate_GJE(cutoff))
 
-    elif mode == "reason-gje":
+    elif mode == "gje-prop":
         prg.register_propagator(Reason_GJE(cutoff))
+
+    elif mode == "gje-prop-n":
+        prg.register_propagator(State_GJE(cutoff))
+
+    elif mode == "gje-state-check-n":
+        prg.register_propagator(State_Check_GJE(cutoff))
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
@@ -133,7 +141,7 @@ class Application:
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje", "reason-gje"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-state-check-n", "gje-simplex-n"]
 
     def __parse_cutoff(self, value):
         """

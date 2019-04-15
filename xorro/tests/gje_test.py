@@ -2,6 +2,7 @@
 Gauss-Jordan Tests Suite
 """
 from xorro import gje
+import numpy as np
 
 def cols_state_to_matrix(state):
     ## Parse columns state to matrix
@@ -38,6 +39,14 @@ def solve_gje(m, show):
         m = gje.remove_rows_zeros(m)
         m = gje.perform_gauss_jordan_elimination(m, show)
     return m
+
+def solve_gje_(m, show):
+    ## If there are more than unary xors perform GJE
+    if len(m[0]) > 2:
+        m = gje.remove_rows_zeros(m)
+        m = np.array([np.array(xi) for xi in m])
+        m = gje.perform_gauss_jordan_elimination_(m, show)
+    return m#.tolist()
 
 
 """
@@ -195,7 +204,19 @@ def test_no_gje(self):
                                 [0, 1]],False),
                      [[1, 0],
                       [0, 1]])
+    
+    # solve_gje_
+    self.assertEqual(solve_gje_([[1, 0],
+                                 [1, 1],
+                                 [1, 0]],False),
+                     [[1, 0],
+                      [1, 1],
+                      [1, 0]])
 
+    self.assertEqual(solve_gje_([[1, 0],
+                                 [0, 1]],False),
+                     [[1, 0],
+                      [0, 1]])
 
 ## More Columns than Rows
 def test_more_cols(self):
@@ -248,6 +269,56 @@ def test_more_cols(self):
                       [0, 0, 0, 1, 0, 0, 0, 0],
                       [0, 0, 0, 0, 1, 0, 0, 1]])
 
+    # solve_gje_
+    self.assertEqual(solve_gje_([[0, 1, 1, 0, 0],
+                                 [0, 1, 1, 0, 0],
+                                 [1, 0, 0, 1, 0]],False).tolist(),
+                     [[1, 0, 0, 1, 0],
+                      [0, 1, 1, 0, 0],
+                      [0, 0, 0, 0, 0]])
+
+    self.assertEqual(solve_gje_([[0, 1, 1, 0],
+                                 [0, 1, 1, 0],
+                                 [1, 0, 0, 0]],False).tolist(),
+                     [[1, 0, 0, 0],
+                      [0, 1, 1, 0],
+                      [0, 0, 0, 0]])
+
+    self.assertEqual(solve_gje_([[1, 0, 1, 0, 0, 0, 0, 0],
+                                 [1, 1, 1, 0, 0, 0, 0, 1],
+                                 [0, 0, 0, 1, 1, 0, 0, 1],
+                                 [0, 0, 0, 0, 0, 1, 1, 0],
+                                 [0, 0, 0, 1, 0, 0, 0, 0]],False).tolist(),
+                     [[1, 0, 1, 0, 0, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 0, 0, 1],
+                      [0, 0, 0, 1, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0, 1],
+                      [0, 0, 0, 0, 0, 1, 1, 0]])
+
+    self.assertEqual(solve_gje_([[0, 1, 0, 0, 0, 0, 0, 1],
+                                 [0, 1, 1, 0, 0, 0, 0, 0],
+                                 [0, 0, 0, 1, 1, 0, 0, 1],
+                                 [0, 0, 0, 0, 0, 1, 1, 0],
+                                 [0, 1, 0, 0, 0, 0, 1, 0],
+                                 [1, 0, 0, 1, 0, 0, 0, 0]],False).tolist(),
+                     [[1, 0, 0, 0, 1, 0, 0, 1],
+                      [0, 1, 0, 0, 0, 0, 0, 1],
+                      [0, 0, 1, 0, 0, 0, 0, 1],
+                      [0, 0, 0, 1, 1, 0, 0, 1],
+                      [0, 0, 0, 0, 0, 1, 0, 1],
+                      [0, 0, 0, 0, 0, 0, 1, 1]])
+
+    self.assertEqual(solve_gje_([[1, 0, 1, 0, 1, 1, 0, 0],
+                                 [1, 1, 1, 0, 0, 0, 1, 1],
+                                 [0, 0, 1, 0, 1, 0, 0, 1],
+                                 [0, 1, 0, 1, 0, 1, 1, 0],
+                                 [0, 0, 0, 1, 0, 0, 0, 0]],False).tolist(),
+                     [[1, 0, 0, 0, 0, 1, 0, 1],
+                      [0, 1, 0, 0, 0, 1, 1, 0],
+                      [0, 0, 1, 0, 0, 0, 0, 0],
+                      [0, 0, 0, 1, 0, 0, 0, 0],
+                      [0, 0, 0, 0, 1, 0, 0, 1]])
+
 ## Square Matrix
 def test_square(self):
     self.assertEqual(solve_gje([[1, 0, 1, 0, 1, 0],
@@ -293,6 +364,51 @@ def test_square(self):
                      [[1, 0, 1],
                       [0, 1, 0]])
 
+    # solve_gje_
+    self.assertEqual(solve_gje_([[1, 0, 1, 0, 1, 0],
+                                 [1, 1, 1, 0, 0, 1],
+                                 [0, 0, 1, 0, 1, 1],
+                                 [0, 1, 0, 1, 0, 0],
+                                 [0, 0, 0, 1, 0, 0]],False).tolist(),
+                    [[1, 0, 0, 0, 0, 1],
+                     [0, 1, 0, 0, 0, 0],
+                     [0, 0, 1, 0, 0, 0],
+                     [0, 0, 0, 1, 0, 0],
+                     [0, 0, 0, 0, 1, 1]])
+
+    self.assertEqual(solve_gje_([[1, 0, 1, 1, 1],
+                                 [1, 0, 1, 0, 0],
+                                 [0, 1, 0, 0, 1],
+                                 [0, 0, 1, 1, 0]],False).tolist(),
+                     [[1, 0, 0, 0, 1],
+                      [0, 1, 0, 0, 1],
+                      [0, 0, 1, 0, 1],
+                      [0, 0, 0, 1, 1]])
+
+    self.assertEqual(solve_gje_([[1, 1, 1, 1],
+                                 [1, 0, 1, 0],
+                                 [0, 0, 1, 0]],False).tolist(),
+                     [[1, 0, 0, 0],
+                      [0, 1, 0, 1],
+                      [0, 0, 1, 0]])
+
+    self.assertEqual(solve_gje_([[0, 0, 1, 1, 1, 0],
+                                 [0, 1, 1, 1, 0, 1],
+                                 [1, 0, 1, 1, 1, 1],
+                                 [0, 1, 0, 1, 0, 0],
+                                 [1, 0, 0, 1, 0, 1]],False).tolist(),
+                     [[1, 0, 0, 0, 0, 1],
+                      [0, 1, 0, 0, 0, 0],
+                      [0, 0, 1, 0, 0, 1],
+                      [0, 0, 0, 1, 0, 0],
+                      [0, 0, 0, 0, 1, 1]])
+
+    self.assertEqual(solve_gje_([[1, 1, 1],
+                                 [1, 0, 1]],False).tolist(),
+                     [[1, 0, 1],
+                      [0, 1, 0]])
+    
+
 
 ## More Rows than Columns
 def test_more_rows(self):
@@ -322,5 +438,28 @@ def test_more_rows(self):
                      [[1, 0, 0],
                       [0, 1, 1]])
 
+    # solve_gje_
+    self.assertEqual(solve_gje_([[1, 0, 1, 0],
+                                 [1, 1, 1, 0],
+                                 [0, 1, 0, 1],
+                                 [0, 0, 1, 0],
+                                 [0, 1, 0, 1]],False).tolist(),
+                     [[1, 0, 0, 0],
+                      [0, 1, 0, 0],
+                      [0, 0, 1, 0],
+                      [0, 0, 0, 1],
+                      [0, 0, 0, 1]])
 
+    self.assertEqual(solve_gje_([[0, 1, 0],
+                                 [0, 1, 1],
+                                 [1, 0, 0],
+                                 [1, 1, 0]],False).tolist(),
+                     [[1, 0, 0],
+                      [0, 1, 1],
+                      [0, 0, 1],
+                      [0, 0, 1]])
 
+    self.assertEqual(solve_gje_([[0, 1, 1],
+                                 [1, 0, 0]],False).tolist(),
+                     [[1, 0, 0],
+                      [0, 1, 1]])

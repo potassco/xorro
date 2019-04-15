@@ -2,23 +2,21 @@ from . import util
 from . import gje
 from itertools import chain
 import clingo
+import numpy as np
 
-def xor_columns(col, parity):
-    result = []
-    for i in range(len(col)):
-        result.append(col[i] ^ parity[i])
-    return result
+class List:
+    """
+    All columns of the state are built in this class, the parity column and the literals
+    """
+    def __init__(self, ls):
+        self.__list = ls
 
-def lits_to_binary(columns, lits, constraint):
-    for i in range(len(lits)):
-        if lits[i] in constraint:
-            columns.setdefault(lits[i], []).append(1)
-        elif -lits[i] in constraint:
-            columns.setdefault(lits[i], []).append(1)
-        else:
-            columns.setdefault(lits[i], []).append(0)
-    return columns
+    def __len__(self):
+        return len(self.__list)
 
+    def __getitem__(self, idx):
+        return self.__list[idx]
+                
 class XOR:
     """
     A XOR constraint maintains the following invariants:
@@ -62,51 +60,54 @@ class XOR:
                 return True
         return False
 
-    def reason_gje(self, columns, assignment, n_lits, cutoff):
+    def reason_gje(self, columns, assignment, cutoff):
         state = {}
+        parities = columns["parity"]
         partial = []
-        deduced_literals = []
 
         ## Get Partial Assignment
-        state["parity"] = columns["parity"]
-        for lit, column in columns.items():
-            if lit != "parity":
-                value = assignment.value(lit)
-                if value == None:
-                    state[lit] = column
-                elif value == True:
-                    state["parity"] = xor_columns(column, state["parity"])
-                    partial.append( lit)
-                elif value == False:                    
-                    partial.append(-lit)                           
-
+        for key, value in columns.items():
+            if key != "parity":
+                assign = assignment.value(key)
+                if assign == None:
+                    state[key] = value
+                elif assign == True:
+                    parities = gje.xor_(value._List__list, parities)
+                    partial.append( key)
+                elif assign == False:
+                    partial.append(-key)
+        
         ## Build the matrix from columns state
-        matrix, xor_lits= gje.columns_state_to_matrix(state)
+        xor_lits = [ lit for lit in state ]
+        m = [ col._List__list for col in state.values()]
+        m.append(parities)
+        matrix = np.array(m).T
 
-        ## Percentage of assigned literals
-        assigned_lits_perc = 1.0-float("%.1f"%(len(xor_lits)/n_lits))
+        ## Check SATISFIABILITY and find consequences
+        conflict, clause = gje.check_sat_(matrix, xor_lits)
+        ## Detect conflict or clauses before GJE
+        if conflict:
+            return conflict, partial, clause
+        
         ## If there are more than unary xors perform GJE
-        if len(state) > 2 and assigned_lits_perc >= cutoff:
-            matrix = gje.remove_rows_zeros(matrix)
-            matrix = gje.perform_gauss_jordan_elimination(matrix, False)
+        if len(matrix[0]) > 2 and len(parities)>1:
+            matrix = gje.remove_rows_zeros_(matrix)
+            matrix = gje.perform_gauss_jordan_elimination_(matrix, False)
 
-        ## Check SATISFIABILITY
-        conflict = gje.check_sat(matrix)
-        if not conflict and xor_lits:
-            ## Imply literals 
-            deduced_literals = gje.deduce_clause(matrix, xor_lits)
+            ## Check SATISFIABILITY and find consequences
+            conflict, clause = gje.check_sat_(matrix, xor_lits)
 
-        return conflict, partial, deduced_literals
+        return conflict, partial, clause
 
 
-class Reason_GJE:
+class State_GJE:
     def __init__(self, cutoff):
-        self.__states  = []
-        self.__columns = []
+        self.__states   = []
+        self.__columns  = []
+        self.__literals = []
         self.__sat = True
         self.__consequences = []
         self.__cutoff = cutoff
-        self.__n_literals = 0
 
     def __add_watch(self, ctl, xor, unassigned, thread_ids):
         """
@@ -132,17 +133,9 @@ class Reason_GJE:
             self.__columns.append({})
 
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
-        literals = []
-        for atom in init.symbolic_atoms.by_signature("__parity",3):
-            lit = init.solver_literal(atom.literal)
-            value = init.assignment.value(lit)
-            if value == None and abs(lit) not in literals:
-                literals.append(abs(lit))
-        
+
         ## Get the constraints
         ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
-        # Number of literals in GJ Matrix
-        self.__n_literals = float(len(literals))
         
         if ret is None:
             self.__sat = False
@@ -154,34 +147,54 @@ class Reason_GJE:
             self.__consequences.extend(facts)
 
             ## Get the literals and parities
+            pars = []
+            literals = []
             for constraint in constraints:
-                # FIXME: check if there is another way to do this. All constraints are represented as "odd" constraints but GJE only uses non-negative variables/literals.
-                # Somehow we need to convert xor constraints with a negative into a positive literal and invert the parity to build the matrix.
-                even = False
-                if constraint[0] < 0:
-                    even = True
-                for thread_id in range(init.number_of_threads):
-                    if even:
-                        self.__columns[thread_id].setdefault("parity", []).append(0)
-                    else:
-                        self.__columns[thread_id].setdefault("parity", []).append(1)
-
-            ## Build the rest of the matrix
-            for constraint in constraints:
+                # Consequences
                 if len(constraint) == 1:
                     lit = next(iter(constraint))
                     self.__consequences.append(lit if constraint[0] > 1 else -lit)
+                # Watch XOR
                 elif len(constraint):
                     xor = XOR(constraint)
                     self.__add_watch(init, xor, 0, range(init.number_of_threads))
                     self.__add_watch(init, xor, 1, range(init.number_of_threads))
+                # Get literals
+                for lit in constraint:
+                    value = init.assignment.value(lit)
+                    if value == None and abs(lit) not in literals:
+                        literals.append(abs(lit))
+            
+                # FIXME: check if there is another way to do this. All constraints are represented as "odd" constraints but GJE only uses non-negative variables/literals.
+                # Somehow we need to convert xor constraints with a negative into a positive literal and invert the parity to build the matrix.
+                # Get parities
+                if constraint[0] < 0:
+                    pars.append(0)
+                else:
+                    pars.append(1)
+
+            # Sort literals
+            self.__literals = List(sorted(literals))
+            
+            # Add parities to the state
+            for thread_id in range(init.number_of_threads):
+                self.__columns[thread_id]["parity"] = List(np.array(pars))
                 
-                for thread_id in range(init.number_of_threads):
-                    self.__columns[thread_id] = lits_to_binary(self.__columns[thread_id], sorted(literals), constraint)
-                    
+            # Build the rest of the matrix
+            matrix = []
+            for constraint in constraints:
+                matrix.append(gje.lits_to_binary_(constraint, literals))
+
+            # Transpose
+            matrix = np.array(matrix).T
+            for thread_id in range(init.number_of_threads):
+                for i in range(len(literals)):
+                    self.__columns[thread_id][literals[i]] = List(matrix[i])
+            
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
             pass
+        
 
     def check(self, control):
         """
@@ -209,14 +222,12 @@ class Reason_GJE:
         Generated conflicts are guaranteed to be asserting (have at least two
         literals from the current decision level).
         """
-        state = self.__states[control.thread_id]
-        columns = self.__columns[control.thread_id]
-        n = self.__n_literals
-        cutoff = self.__cutoff
+        state     = self.__states[control.thread_id]
+        columns   = self.__columns[control.thread_id]
+        cutoff    = self.__cutoff
         
         for literal in changes:
             variable = abs(literal)
-
             state[variable], watches = [], state[variable]
             assert(len(watches) > 0)
             for i in range(len(watches)):
@@ -232,14 +243,14 @@ class Reason_GJE:
                     state[variable].append((xor, unassigned))                                                           
                     
                     ## GJE
-                    conflict, partial, clause = xor.reason_gje(columns, control.assignment, n, cutoff)
-                    if clause is not None:
-                        for lit in clause:
-                            if not control.add_nogood(partial+[-lit]) or not control.propagate():
-                                return                                
+                    conflict, partial, clause = xor.reason_gje(columns, control.assignment, cutoff)
                     if conflict:
-                        if not control.add_nogood(partial) or not control.propagate():
+                        if not control.add_nogood(partial):
                             return
+                    elif clause:
+                        for lit in clause:
+                            if not control.add_nogood(partial+[-lit]):
+                                return                                
                     
             if len(state[variable]) == 0:
                 control.remove_watch( variable)
