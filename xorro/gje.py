@@ -227,7 +227,6 @@ def perform_gauss_jordan_elimination_(m, show):
     Print options are available using the show flag for tests/debbuging to check the GJE Procedure.
     """
     if show:
-        print m
         print("Initial State")
         print_matrix(m)
     
