@@ -16,7 +16,6 @@ from .watches_up import WatchesUnitPropagator
 from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
-from .gje_state_check_n import State_Check_GJE
 from random import sample
 import sys as _sys
 import clingo as _clingo
@@ -84,9 +83,6 @@ def translate(mode, prg, cutoff):
     elif mode == "gje-prop-n":
         prg.register_propagator(State_GJE(cutoff))
 
-    elif mode == "gje-state-check-n":
-        prg.register_propagator(State_Check_GJE(cutoff))
-
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
             layer = [Leaf(literal) for literal in constraint]
@@ -141,7 +137,7 @@ class Application:
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-state-check-n", "gje-simplex-n"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex"]
 
     def __parse_cutoff(self, value):
         """
@@ -202,6 +198,14 @@ class Application:
         """
 
         if self.__sampling.value:
+            """
+            Sampling features and workflow
+            """
+            models = []
+            selected = []
+            requested_models = int(str(prg.configuration.solve.models))
+            prg.configuration.solve.models = 0
+
             s = self.__s
             q = self.__q
             xors = util.generate_random_xors(prg, files, s, q)
@@ -212,12 +216,8 @@ class Application:
             transform(prg,files)
             prg.ground([("base", [])])
             translate(self.__approach, prg, self.__cutoff)
-
-            models = []
-            selected = []
-            requested_models = int(str(prg.configuration.solve.models))
-            prg.configuration.solve.models = 0
             ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
+            
             if requested_models == -1:
                 requested_models = 1
             elif requested_models == 0:
@@ -232,6 +232,9 @@ class Application:
                     print("Answer: %s"%selected[i])
                     print(' '.join(map(str, sorted(models[selected[i]-1]))))
         else:
+            """
+            Standard xorro workflow
+            """
             transform(prg,files)
             prg.ground([("base", [])])
             translate(self.__approach, prg, self.__cutoff)
