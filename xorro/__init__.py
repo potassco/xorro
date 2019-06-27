@@ -18,6 +18,7 @@ from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
 from random import sample
 import sys as _sys
+import os as _os
 import clingo as _clingo
 from textwrap import dedent as _dedent
 
@@ -131,6 +132,7 @@ class Application:
         self.__q = 0.5
         self.__sampling = _clingo.Flag(False)
         self.__display  = _clingo.Flag(False)
+        self.__split = 4
 
     def __parse_approach(self, value):
         """
@@ -159,6 +161,13 @@ class Application:
         """
         self.__q = float(value)
         return self.__q >=0.0 and self.__q <=1.0
+
+    def __parse_split(self, value):
+        """
+        Parse the split integer value
+        """
+        self.__split = int(value)
+        return self.__split >=2
     
     def register_options(self, options):
         """
@@ -192,16 +201,20 @@ class Application:
         options.add_flag(group, "display", _dedent("""\
         Display the random XOR constraints used in sampling"""), self.__display)
 
+        options.add(group, "split", _dedent("""\
+        Split XOR constraints to smaller ones of size <n>. Default=4"""), self.__parse_split)
+
     def main(self, prg, files):
         """
         Implements the rewriting and solving loop.
         """
+        models = []
 
+        """
+        Sampling features before grounding/solving
+        Building random parity constraints and configure clingo control
+        """
         if self.__sampling.value:
-            """
-            Sampling features and workflow
-            """
-            models = []
             selected = []
             requested_models = int(str(prg.configuration.solve.models))
             prg.configuration.solve.models = 0
@@ -211,13 +224,36 @@ class Application:
             xors = util.generate_random_xors(prg, files, s, q)
             if self.__display.value:
                 print(xors)
-            files.append("examples/xors.lp")
+            files.append("examples/__temp_xors.lp")
 
-            transform(prg,files)
-            prg.ground([("base", [])])
-            translate(self.__approach, prg, self.__cutoff)
-            ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
-            
+        """
+        Split preprocessing
+        """
+        choice_rule = [None]
+        if self.__split >=2:
+
+            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, self.__sampling.value)
+
+            print "Number of XORs: %s"%len(xors_lits)
+
+            prepro_xors, prepro_pars, choice_rule = util.split(xors_lits, xors_parities, self.__split, self.__display)
+            print prepro_xors
+            print prepro_pars
+            print choice_rule
+        
+        """
+        Standard xorro workflow
+        """
+        transform(prg,files)
+        prg.ground([("base", [])])
+        translate(self.__approach, prg, self.__cutoff)
+        ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
+
+        """
+        Sample from all answer sets remaining in the cluster
+        """
+        if self.__sampling.value:            
+            _os.remove("examples/__temp_xors.lp")
             if requested_models == -1:
                 requested_models = 1
             elif requested_models == 0:
@@ -231,14 +267,6 @@ class Application:
                 for i in range(requested_models):
                     print("Answer: %s"%selected[i])
                     print(' '.join(map(str, sorted(models[selected[i]-1]))))
-        else:
-            """
-            Standard xorro workflow
-            """
-            transform(prg,files)
-            prg.ground([("base", [])])
-            translate(self.__approach, prg, self.__cutoff)
-            prg.solve()
 
 def main():
     """
