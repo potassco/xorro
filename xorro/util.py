@@ -97,7 +97,7 @@ def symbols_to_xor_r(symbolic_atoms, get_lit):
 def generate_random_xors(prg, files, s, q):
     """
     Of course adding the theory may not be the best way to do it. This is just a hack
-    Maybe using the AST is a better alternative to extract the symbols to build the xor constraints.
+    Using the AST is a better alternative to extract the symbols to build the xor constraints.
     In the end, we just need the symbols to write a file with random constraints. 
     """
     for f in files:
@@ -127,7 +127,126 @@ def generate_random_xors(prg, files, s, q):
             terms = " ; ".join(str(x)+":"+str(x) for x in sorted(sample(symbols, size)))
             xors  += "&%s{ %s }.\n"%(get_str_parity(randint(0,1)), terms)
 
-        file_ = open("examples/xors.lp","w")
+        file_ = open("examples/__temp_xors.lp","w")
         file_.write(xors)
         file_.close()
     return xors
+
+
+def get_xors(prg, files, sampling):
+    """
+    Get XORs from encoding(s)/instance(s)
+    """
+
+    print files
+    if not sampling:
+        for f in files:
+            prg.load(f)
+
+        prg.add("base", [], _dedent("""\
+        #theory parity { 
+         element {}; 
+         &odd/0 : element, directive; 
+         &even/0 : element, directive }.
+        """))
+
+        prg.ground([("base", [])])
+
+    ## Get XORS
+    all_lits       = []
+    xors_parities  = []
+    xors_lits      = []
+
+    for atom in prg.theory_atoms:
+        print atom
+        xors_parities.append(get_parity(atom.term))
+        lits = []
+        
+        for e in atom.elements:
+            if len(e.terms) == 2:
+                lits.append(str(e.terms[1]))
+                if str(e.terms[1]) not in all_lits:
+                    all_lits.append(str(e.terms[1]))
+            else:
+                lits.append(str(e.terms[0]))
+                if str(e.terms[0]) not in all_lits:
+                    all_lits.append(str(e.terms[0]))
+        xors_lits.append(lits)
+
+    return xors_lits, xors_parities, all_lits
+
+
+def split_x(data, _split, prev):
+    _aux_prefix   = "__aux"
+    start = prev
+    
+    # Slice the first sub_xor of size "_split" -1
+    base_xor = data[:(_split-1)]
+    rest_xor = data[(_split-1):]
+
+    # Slice the rest chunk from the original xor of size "_split" -2
+    xor_chunks = [rest_xor[x:x+(_split-2)] for x in range(0, len(rest_xor), _split-2)]
+    # If the last chunk is of size 1, do not add an aux variable and insert this last element in a previous chunk if exist
+    if len(xor_chunks) > 1 and len(xor_chunks[-1]) == 1:
+        last = xor_chunks[-1]
+        xor_chunks[-2].append(last[0])
+        del xor_chunks[-1]
+
+    # Add the prev and the following aux variables
+    for i in range(len(xor_chunks)-1):
+        xor_chunks[i].append("%s_%s"%(_aux_prefix, prev+1))
+        xor_chunks[i].insert(0, "%s_%s"%(_aux_prefix, prev))
+        prev += 1
+
+    # Add first aux variable in base_xor
+    xor_chunks.insert(0, base_xor)
+    xor_chunks[0].insert(_split-1, "%s_%s"%(_aux_prefix, start))
+
+    # Add the last aux variable in the last sub xor
+    xor_chunks[-1].insert(0, "%s_%s"%(_aux_prefix, prev))
+
+    # Build the choice rule of aux variables
+    _auxs = []
+    
+    for i in range(start,prev+1):
+        _auxs.append("%s_%s"%(_aux_prefix, i))
+
+    # Parse string of the choice rule
+    terms = " ; ".join(str(x) for x in _auxs)
+    choice_rule = "{ %s }.\n"%(terms)
+
+    return xor_chunks, choice_rule, prev
+    
+
+def split(xors, parities, split, debug):
+    """
+    Split XORs
+    """
+    choice_rule = ""
+    sub_pars = []
+    splitted_xors = []
+    splitted_pars = []
+    aux_index = 0
+    choices = []
+    
+    ## If len of xor is less or equal the split value, do not split
+    for i in range(len(xors)):
+        if len(xors[i]) <= split:
+            if debug:
+                print "XOR %s not splitted. XOR size is less than the split value"%(i+1)
+            splitted_xors.append(xors[i])
+            splitted_pars.append(parities[i])
+            choice_rule = None
+        else:
+            if debug:
+                print "Splitting XOR %s"%(i+1)
+            sub_xors, choice_rule, aux_index = split_x(xors[i], split, aux_index+1)
+            choices.append(choice_rule)
+            sub_pars = [0] * len(sub_xors)
+            sub_pars[0] = parities[i]
+
+            for i in range(len(sub_xors)):
+                splitted_xors.append(sub_xors[i])
+                splitted_pars.append(sub_pars[i])
+            
+    return splitted_xors, splitted_pars, choices
