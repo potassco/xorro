@@ -138,7 +138,7 @@ def get_xors(prg, files, sampling):
     Get XORs from encoding(s)/instance(s)
     """
 
-    print files
+    #print files
     if not sampling:
         for f in files:
             prg.load(f)
@@ -158,7 +158,7 @@ def get_xors(prg, files, sampling):
     xors_lits      = []
 
     for atom in prg.theory_atoms:
-        print atom
+        #print atom
         xors_parities.append(get_parity(atom.term))
         lits = []
         
@@ -233,13 +233,13 @@ def split(xors, parities, split, debug):
     for i in range(len(xors)):
         if len(xors[i]) <= split:
             if debug:
-                print "XOR %s not splitted. XOR size is less than the split value"%(i+1)
+                print("XOR %s not splitted. XOR size is less than the split value"%(i+1))
             splitted_xors.append(xors[i])
             splitted_pars.append(parities[i])
             choice_rule = None
         else:
             if debug:
-                print "Splitting XOR %s"%(i+1)
+                print("Splitting XOR %s"%(i+1))
             sub_xors, choice_rule, aux_index = split_x(xors[i], split, aux_index+1)
             choices.append(choice_rule)
             sub_pars = [0] * len(sub_xors)
