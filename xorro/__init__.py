@@ -225,21 +225,19 @@ class Application:
             if self.__display.value:
                 print(xors)
             files.append("examples/__temp_xors.lp")
-
+        
         """
         Split preprocessing
         """
         choice_rule = [None]
         if self.__split >=2:
-
             xors_lits, xors_parities, all_lits = util.get_xors(prg, files, self.__sampling.value)
 
-            print("Number of XORs: %s"%len(xors_lits))
+            if self.__display:
+                print("Total number of XORs: %s"%len(xors_lits))
 
             prepro_xors, prepro_pars, choice_rule = util.split(xors_lits, xors_parities, self.__split, self.__display)
-            #print prepro_xors
-            #print prepro_pars
-            #print choice_rule
+
         
         """
         Standard xorro workflow

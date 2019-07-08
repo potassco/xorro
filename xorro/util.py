@@ -31,6 +31,12 @@ def default_get_lit(init):
         return lit, value(lit)
     return get_lit
 
+def build_theory_atoms(out_str, xor, parity):
+    terms = " ; ".join(str(x)+":"+str(x) for x in sorted(xor))
+    out_str  += "&%s{ %s }.\n"%(get_str_parity(parity), terms)
+    return out_str
+
+
 class _XORConstraint:
     def __init__(self, parity):
         self.parity = parity
@@ -120,12 +126,11 @@ def generate_random_xors(prg, files, s, q):
     if len(symbols) > 0:
         if s == 0:
             estimated_s = int(log(len(symbols) + 1, 2))
-        print("Random XOR Constraints: %s"%estimated_s)
+        print("Random XOR constraints: %s"%estimated_s)
         for i in range(estimated_s):
             range_ = int((len(symbols))*q)
             size = randint(range_, range_)
-            terms = " ; ".join(str(x)+":"+str(x) for x in sorted(sample(symbols, size)))
-            xors  += "&%s{ %s }.\n"%(get_str_parity(randint(0,1)), terms)
+            xors = build_theory_atoms(xors, sorted(sample(symbols, size)), randint(0,1))
 
         file_ = open("examples/__temp_xors.lp","w")
         file_.write(xors)
@@ -138,11 +143,14 @@ def get_xors(prg, files, sampling):
     Get XORs from encoding(s)/instance(s)
     """
 
-    #print files
-    if not sampling:
-        for f in files:
-            prg.load(f)
+    ## Load files
+    for f in files:
+        prg.load(f)
 
+    ## Theory is added when Random XORs are built.
+    ## So, if not sampling, theory must be added here.
+    ## This must be substitute by using the AST
+    if not sampling:        
         prg.add("base", [], _dedent("""\
         #theory parity { 
          element {}; 
@@ -150,7 +158,7 @@ def get_xors(prg, files, sampling):
          &even/0 : element, directive }.
         """))
 
-        prg.ground([("base", [])])
+    prg.ground([("base", [])])
 
     ## Get XORS
     all_lits       = []
@@ -158,7 +166,6 @@ def get_xors(prg, files, sampling):
     xors_lits      = []
 
     for atom in prg.theory_atoms:
-        #print atom
         xors_parities.append(get_parity(atom.term))
         lits = []
         
@@ -213,7 +220,7 @@ def split_x(data, _split, prev):
 
     # Parse string of the choice rule
     terms = " ; ".join(str(x) for x in _auxs)
-    choice_rule = "{ %s }.\n"%(terms)
+    choice_rule = "{ %s }. "%(terms)
 
     return xor_chunks, choice_rule, prev
     
@@ -232,13 +239,13 @@ def split(xors, parities, split, debug):
     ## If len of xor is less or equal the split value, do not split
     for i in range(len(xors)):
         if len(xors[i]) <= split:
-            if debug:
+            if debug.value:
                 print("XOR %s not splitted. XOR size is less than the split value"%(i+1))
             splitted_xors.append(xors[i])
             splitted_pars.append(parities[i])
             choice_rule = None
         else:
-            if debug:
+            if debug.value:
                 print("Splitting XOR %s"%(i+1))
             sub_xors, choice_rule, aux_index = split_x(xors[i], split, aux_index+1)
             choices.append(choice_rule)
@@ -248,5 +255,14 @@ def split(xors, parities, split, debug):
             for i in range(len(sub_xors)):
                 splitted_xors.append(sub_xors[i])
                 splitted_pars.append(sub_pars[i])
-            
+
+    if debug.value:
+        ## Display all the XORs after the split
+        xors = ""
+        print("")
+        for i in range(len(splitted_xors)):
+            xors = build_theory_atoms(xors,splitted_xors[i], splitted_pars[i])
+        print xors
+        for choice in choices:
+            print choice
     return splitted_xors, splitted_pars, choices
