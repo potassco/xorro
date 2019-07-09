@@ -248,7 +248,7 @@ class Application:
             if self.__display.value:
                 ## Display all the XORs after the GJE preprocessing
                 print("")
-                print xors
+                print(xors)
 
             ## Update the files
             files = util.write_file(files, xors, "")     
@@ -272,9 +272,9 @@ class Application:
             if self.__display.value:
                 ## Display all the XORs after the split
                 print("")
-                print xors
+                print(xors)
                 for choice in choice_rule:
-                    print choice
+                    print(choice)
 
             ## Update the files
             files = util.write_file(files, xors, choice_rule)
