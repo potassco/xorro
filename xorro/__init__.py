@@ -132,7 +132,8 @@ class Application:
         self.__q = 0.5
         self.__sampling = _clingo.Flag(False)
         self.__display  = _clingo.Flag(False)
-        self.__split = 4
+        self.__split = 0
+        self.__pre_gje  = _clingo.Flag(False)
 
     def __parse_approach(self, value):
         """
@@ -202,7 +203,10 @@ class Application:
         Display the random XOR constraints used in sampling"""), self.__display)
 
         options.add(group, "split", _dedent("""\
-        Split XOR constraints to smaller ones of size <n>. Default=4"""), self.__parse_split)
+        Split XOR constraints to smaller ones of size <n>. Default=0 (off) """), self.__parse_split)
+
+        options.add_flag(group, "pre-gje", _dedent("""\
+        Enable GJE preprocessing for XOR constraints"""), self.__pre_gje)
 
     def main(self, prg, files):
         """
@@ -214,6 +218,8 @@ class Application:
         Sampling features before grounding/solving
         Building random parity constraints and configure clingo control
         """
+        add_theory = True
+        
         if self.__sampling.value:
             selected = []
             requested_models = int(str(prg.configuration.solve.models))
@@ -222,22 +228,56 @@ class Application:
             s = self.__s
             q = self.__q
             xors = util.generate_random_xors(prg, files, s, q)
+            add_theory = False
             if self.__display.value:
                 print(xors)
             files.append("examples/__temp_xors.lp")
-        
+
+        """
+        GJE preprocessing
+        """
+        if self.__pre_gje.value:
+            print("Performing GJE preprocessing")
+            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, add_theory)
+            add_theory = False
+            prepro_xors, prepro_pars = util.pre_gje(xors_lits, xors_parities, all_lits, self.__display.value)
+
+            xors = ""
+            for i in range(len(prepro_xors)):
+                xors = util.build_theory_atoms(xors,prepro_xors[i], prepro_pars[i])
+            if self.__display.value:
+                ## Display all the XORs after the GJE preprocessing
+                print("")
+                print xors
+
+            ## Update the files
+            files = util.write_file(files, xors, "")     
+            
         """
         Split preprocessing
         """
-        choice_rule = [None]
         if self.__split >=2:
-            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, self.__sampling.value)
+            print("Splitting XORs")
+            choice_rule = [None]
+            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, add_theory)
 
-            if self.__display:
+            if self.__display.value:
                 print("Total number of XORs: %s"%len(xors_lits))
 
-            prepro_xors, prepro_pars, choice_rule = util.split(xors_lits, xors_parities, self.__split, self.__display)
+            prepro_xors, prepro_pars, choice_rule = util.split(xors_lits, xors_parities, self.__split, self.__display.value)
 
+            xors = ""
+            for i in range(len(prepro_xors)):
+                xors = util.build_theory_atoms(xors,prepro_xors[i], prepro_pars[i])
+            if self.__display.value:
+                ## Display all the XORs after the split
+                print("")
+                print xors
+                for choice in choice_rule:
+                    print choice
+
+            ## Update the files
+            files = util.write_file(files, xors, choice_rule)
         
         """
         Standard xorro workflow
