@@ -281,11 +281,11 @@ def pre_gje(xors_lits, xors_parities, all_lits, show):
         matrix.append(row)
 
     if show:
-        print "Pre"
+        print("Initial Matrix")
         gje.print_matrix(matrix)
     matrix = gje.perform_gauss_jordan_elimination(matrix, False)
     if show:
-        print "Post"
+        print("Reduced Matrix")
         gje.print_matrix(matrix)
 
     updated_xors, updated_pars = [], []
@@ -309,7 +309,6 @@ def write_file(files, xors, add_rules):
 
     ## Get lines
     lines = list(chain.from_iterable(open(f) for f in files))
-    #print "lines", lines
 
     ## Write lines excluding theory atoms
     for i in range(len(lines)):
