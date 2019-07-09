@@ -5,6 +5,7 @@ import sys
 from textwrap import dedent as _dedent
 from math import log
 from random import randint, sample
+from . import gje
 
 
 def attrdef(m, a, b):
@@ -35,7 +36,6 @@ def build_theory_atoms(out_str, xor, parity):
     terms = " ; ".join(str(x)+":"+str(x) for x in sorted(xor))
     out_str  += "&%s{ %s }.\n"%(get_str_parity(parity), terms)
     return out_str
-
 
 class _XORConstraint:
     def __init__(self, parity):
@@ -138,7 +138,7 @@ def generate_random_xors(prg, files, s, q):
     return xors
 
 
-def get_xors(prg, files, sampling):
+def get_xors(prg, files, add_theory):
     """
     Get XORs from encoding(s)/instance(s)
     """
@@ -150,7 +150,7 @@ def get_xors(prg, files, sampling):
     ## Theory is added when Random XORs are built.
     ## So, if not sampling, theory must be added here.
     ## This must be substitute by using the AST
-    if not sampling:        
+    if add_theory:        
         prg.add("base", [], _dedent("""\
         #theory parity { 
          element {}; 
@@ -225,7 +225,7 @@ def split_x(data, _split, prev):
     return xor_chunks, choice_rule, prev
     
 
-def split(xors, parities, split, debug):
+def split(xors, parities, split, display):
     """
     Split XORs
     """
@@ -239,13 +239,13 @@ def split(xors, parities, split, debug):
     ## If len of xor is less or equal the split value, do not split
     for i in range(len(xors)):
         if len(xors[i]) <= split:
-            if debug.value:
+            if display:
                 print("XOR %s not splitted. XOR size is less than the split value"%(i+1))
             splitted_xors.append(xors[i])
             splitted_pars.append(parities[i])
             choice_rule = None
         else:
-            if debug.value:
+            if display:
                 print("Splitting XOR %s"%(i+1))
             sub_xors, choice_rule, aux_index = split_x(xors[i], split, aux_index+1)
             choices.append(choice_rule)
@@ -256,13 +256,77 @@ def split(xors, parities, split, debug):
                 splitted_xors.append(sub_xors[i])
                 splitted_pars.append(sub_pars[i])
 
-    if debug.value:
-        ## Display all the XORs after the split
-        xors = ""
-        print("")
-        for i in range(len(splitted_xors)):
-            xors = build_theory_atoms(xors,splitted_xors[i], splitted_pars[i])
-        print xors
-        for choice in choices:
-            print choice
     return splitted_xors, splitted_pars, choices
+
+
+def pre_gje(xors_lits, xors_parities, all_lits, show):
+    # If exist more than one constraint
+    """
+    xors_lits = [['a','c','d','f'],
+                 ['c','d','e','f']]
+    xors_pars = [1, 0]
+    all_lits  = ['a','b','c','d','e','f','g','h']
+    """
+
+    # Build Matrix
+    matrix = []
+    for i in range(len(xors_parities)):
+        row = []
+        for lit in all_lits:
+            if lit in xors_lits[i]:
+                row.append(1)
+            else:
+                row.append(0)
+        row.append(xors_parities[i])
+        matrix.append(row)
+
+    if show:
+        print "Pre"
+        gje.print_matrix(matrix)
+    matrix = gje.perform_gauss_jordan_elimination(matrix, False)
+    if show:
+        print "Post"
+        gje.print_matrix(matrix)
+
+    updated_xors, updated_pars = [], []
+    for row in matrix:
+        updated_row = []
+        for i in range(len(row)-1):
+            if row[i] == 1:
+                updated_row.append(all_lits[i])
+        updated_pars.append(row[-1])
+        updated_xors.append(updated_row)
+
+    return updated_xors, updated_pars
+
+
+def write_file(files, xors, add_rules):
+    """
+    Rewrite input files with preprocessed parity constraints
+    """
+    ## Create temp file
+    file_ = open("examples/__rewritten_program.lp", 'w')
+
+    ## Get lines
+    lines = list(chain.from_iterable(open(f) for f in files))
+    #print "lines", lines
+
+    ## Write lines excluding theory atoms
+    for i in range(len(lines)):
+        if "odd{" not in str(lines[i]) and "even{" not in str(lines[i]):
+            file_.write("%s"%lines[i])
+
+    ## Write XORs
+    file_.write("%s"%xors)
+
+    ## Write additional rules. e.g. choices for split
+    for rule in add_rules:
+        file_.write("%s"%rule)
+        
+    ## Close file
+    file_.close()
+
+    ## Update files list
+    files = ["examples/__rewritten_program.lp"]
+    
+    return files
