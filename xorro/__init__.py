@@ -251,7 +251,8 @@ class Application:
                 print(xors)
 
             ## Update the files
-            files = util.write_file(files, xors, "")     
+            files = util.write_file(files, xors, "")
+            ## Remove the file
             
         """
         Split preprocessing
@@ -287,6 +288,10 @@ class Application:
         translate(self.__approach, prg, self.__cutoff)
         ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
 
+        ## Remove temp file
+        if _os.path.exists("examples/__rewritten_program.lp"):
+            _os.remove("examples/__rewritten_program.lp")
+        
         """
         Sample from all answer sets remaining in the cluster
         """
