@@ -16,6 +16,7 @@ from .watches_up import WatchesUnitPropagator
 from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
+from .gje_simplex import Simplex_GJE
 from random import sample
 import sys as _sys
 import os as _os
@@ -83,6 +84,9 @@ def translate(mode, prg, cutoff):
 
     elif mode == "gje-prop-n":
         prg.register_propagator(State_GJE(cutoff))
+
+    elif mode == "gje-simplex":
+        prg.register_propagator(Simplex_GJE(cutoff))
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
