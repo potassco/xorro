@@ -71,43 +71,6 @@ class XOR:
 
         return None if assignment.is_true(clause[-1]) else clause
 
-#    def reason_gje(self, columns, assignment, n_lits, cutoff):
-#        state = {}
-#        partial = []
-#        deduced_literals = []
-
-#        ## Get Partial Assignment
-#        state["parity"] = columns["parity"]
-#        for lit, column in columns.items():
-#            if lit != "parity":
-#                value = assignment.value(lit)
-#                if value == None:
-#                    state[lit] = column
-#                elif value == True:
-#                    state["parity"] = xor_columns(column, state["parity"])
-#                    partial.append( lit)
-#                elif value == False:                    
-#                    partial.append(-lit)                           
-
-        ## Build the matrix from columns state
-#        matrix, xor_lits= gje.columns_state_to_matrix(state)
-
-        ## Percentage of assigned literals
-#        assigned_lits_perc = 1.0-float("%.1f"%(len(xor_lits)/n_lits))
-        ## If there are more than unary xors perform GJE
-#        if len(state) > 2 and assigned_lits_perc >= cutoff:
-#            matrix = gje.remove_rows_zeros(matrix)
-#            matrix = gje.perform_gauss_jordan_elimination(matrix, False)
-
-        ## Check SATISFIABILITY
-#        conflict = gje.check_sat(matrix)
-#        if not conflict and xor_lits:
-            ## Imply literals 
-#            deduced_literals = gje.deduce_clause(matrix, xor_lits)
-
-#        return conflict, partial, deduced_literals
-
-
 class Simplex_GJE:
     def __init__(self, cutoff):
         self.__states  = []
@@ -115,10 +78,10 @@ class Simplex_GJE:
         self.__sat = True
         self.__consequences = []
         self.__cutoff = cutoff
-        self.__n_literals = 0
         self.__literals = []
         self.__matrix = []
         self.__basic_lits = []
+        self.__non_basic_lits = []
 
         
     def __add_watch(self, ctl, xor, unassigned, thread_ids):
@@ -158,17 +121,22 @@ class Simplex_GJE:
             self.__consequences.extend(facts)
 
             """
-            Count the number of XORs of length greater than 2.
-            If exist only one XOR of lenght 2, do not do GJE. Add it to the UP state
-            Else, if exist more than 1 XOR of length 3 or greater, build the matrix to do GJE
+            How the preprocessing works:
+            Get all the literals involved in parity constraints
+            Build the matrix and perform a GJE procedure
+            Rebuild the XORs after reducing the matrix
+            Count the number of XORs of length greater than 2. If more than one exist, it is worth it to keep the matrix
+            Else, if exist only one longer XOR or XORs of lenght 2, do not keep the matrix and no GJE is done. Add these XORs to the UP state
+            Else, if exist XORs of size 1, extend the consquences list
+            If the matrix is not kept, the propagator runs as the UP approach
+            Else, if the matrix exist, we need to identify the basic and non basic literals
+            TODO: Analyze if the XORs belonging to the matrix are going to be handled in the same state as the other XORs or separately.
             """
             print "constraints", constraints
             for constraint in constraints:
                 for lit in constraint:
                     if abs(lit) not in self.__literals:
                         self.__literals.append(abs(lit))
-
-            print "literals", self.__literals, "\n"
             
             # Build Matrix
             for constraint in constraints:
@@ -236,21 +204,22 @@ class Simplex_GJE:
                     ## For GJE
                     pos = constraints.index(constraint)
                     self.__matrix.append(matrix[pos])
-                    #xor = XOR(constraints[i])
+                    #xor = XOR(constraints[i]) ## This case has to be treated
                     #self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states_gje)
                     #self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states_gje)
 
-            print ""
-            print self.__literals
-            gje.print_matrix(self.__matrix)
-            print constraints
+            ## Get basic and non basic literals
+            number_basics = len(self.__matrix)
+            if number_basics > 0:
+                print ""
+                print "literals", self.__literals
+                gje.print_matrix(self.__matrix)
+                print constraints
 
-            
-
-                
-             #   self.__basic_lits.append(abs(_xor[0]))
-            #print "basic"
-            #print self.__basic_lits
+                self.__basic_lits = self.__literals[0:number_basics]
+                print "basic lits", self.__basic_lits
+                self.__non_basic_lits = self.__literals[number_basics:]
+                print "non basic lits", self.__non_basic_lits
                                             
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
@@ -315,77 +284,3 @@ class Simplex_GJE:
                 control.remove_watch( variable)
                 control.remove_watch(-variable)
                 state.pop(variable)
-
-#    def propagate(self, control, changes):
-        """
-        Propagates XOR constraints maintaining two watches per constraint.
-
-        Generated conflicts are guaranteed to be asserting (have at least two
-        literals from the current decision level).
-        """
-#        state  = self.__states[control.thread_id]
-#        n      = self.__n_literals
-#        cutoff = self.__cutoff
-#        basic  = self.__basic_lits
-#        matrix = self.__matrix
-#        update_basic = False
-        
-#        for literal in changes:
-#            variable = abs(literal)
-#            print variable
-#            basic_index = None
-#            for k in range(len(basic)):
-#                if variable == basic[k]:
-#                    basic_index = k
-#            print "state", state
-#            state[variable], watches = [], state[variable]
-#            assert(len(watches) > 0)
-#            for i in range(len(watches)):
-#                xor, unassigned = watches[i]
-                
-#                if xor.propagate(control.assignment, unassigned):
-#                    # We found an unassigned literal, which is watched next.
-#                    self.__add_watch(control, xor, unassigned, (control.thread_id,))
-#                    if basic_index is not None:
-#                        print "Update basic"
-#                        basic[basic_index] = xor[unassigned]
-#                        print basic
-#                        print "Update columns"
-#                        print self.__literals
-#                        gje.print_matrix(matrix)
-#                        print ""
-#                        for l in range(len(self.__literals)):
-#                            if self.__literals[l] == xor[unassigned]:
-#                                temp = self.__literals[basic_index]
-#                                self.__literals[basic_index] = self.__literals[l]
-#                                self.__literals[l] = temp
-#                                matrix = gje.swap_columns(matrix, basic_index, l)
-#                                print self.__literals
-#                                gje.print_matrix(matrix)
-#                        print ""
-#                        print "Reduce Matrix"
-#                        matrix = gje.reduce(matrix,basic_index)
-
-#                else:
-                    # Here the constraint is either unit, satisfied, or
-                    # conflicting. In any case, we can keep the watch because
-                    # (*) the current decision level has to be backtracked
-                    # before the constraint can become unit again.
-#                    state[variable].append((xor, unassigned))
-
-                    #for lit in xor._XOR__literals:
-                    #    print "lit:", lit, control.assignment.value(lit)
-                    ## GJE
-                    #conflict, partial, clause = xor.reason_gje(columns, control.assignment, n, cutoff)
-                    #if clause is not None:
-                    #    for lit in clause:
-                    #        if not control.add_nogood(partial+[-lit]) or not control.propagate():
-                    #            return                                
-                    #if conflict:
-                    #    if not control.add_nogood(partial) or not control.propagate():
-                    #        return
-
-#            if len(state[variable]) == 0:
-#                control.remove_watch( variable)
-#                control.remove_watch(-variable)
-#                state.pop(variable)
