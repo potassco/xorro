@@ -132,7 +132,7 @@ class Simplex_GJE:
             Else, if the matrix exist, we need to identify the basic and non basic literals
             TODO: Analyze if the XORs belonging to the matrix are going to be handled in the same state as the other XORs or separately.
             """
-            print "constraints", constraints
+            print("constraints :%s"%constraints)
             for constraint in constraints:
                 for lit in constraint:
                     if abs(lit) not in self.__literals:
@@ -154,16 +154,16 @@ class Simplex_GJE:
                 self.__matrix.append(row)
 
             # Preprocess by reducing the matrix to Reduced Row Echelon Form
-            print "Initial Matrix"
+            print("Initial Matrix")
             gje.print_matrix(self.__matrix)
             self.__matrix = gje.perform_gauss_jordan_elimination(self.__matrix,False)
-            print "Reduced Matrix"
+            print("Reduced Matrix")
             gje.print_matrix(self.__matrix)
 
             constraints = []
             ## Rebuild XORs after initial GJE
             ## Check cases if XORs of size 1, 2 or greater or equal than 3.
-            print "Rebuild xors"
+            print("Rebuild xors")
             for row in self.__matrix:
                 constraint = []
                 for i in range(len(row)-1):
@@ -174,7 +174,7 @@ class Simplex_GJE:
                         constraint[0] = -constraint[0]
                     constraints.append(constraint)
 
-            print constraints
+            print(constraints)
             longer_xor = 0
             for constraint in constraints:
                 if len(constraint) > 2:
@@ -211,15 +211,15 @@ class Simplex_GJE:
             ## Get basic and non basic literals
             number_basics = len(self.__matrix)
             if number_basics > 0:
-                print ""
-                print "literals", self.__literals
+                print("")
+                print("literals: %s"%self.__literals)
                 gje.print_matrix(self.__matrix)
-                print constraints
+                print(constraints)
 
                 self.__basic_lits = self.__literals[0:number_basics]
-                print "basic lits", self.__basic_lits
+                print("basic lits: %s"%self.__basic_lits)
                 self.__non_basic_lits = self.__literals[number_basics:]
-                print "non basic lits", self.__non_basic_lits
+                print("non basic lits: %s"%self.__non_basic_lits)
                                             
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
