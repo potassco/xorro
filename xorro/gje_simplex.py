@@ -132,6 +132,7 @@ class Simplex_GJE:
             Else, if the matrix exist, we need to identify the basic and non basic literals
             TODO: Analyze if the XORs belonging to the matrix are going to be handled in the same state as the other XORs or separately.
             """
+            
             print("constraints :%s"%constraints)
             for constraint in constraints:
                 for lit in constraint:
