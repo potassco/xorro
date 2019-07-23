@@ -119,7 +119,11 @@ class Simplex_GJE:
             #       without any of the other approaches
             constraints, facts = ret
             self.__consequences.extend(facts)
+            ## Add facts to the matrix. Unit xors serves to deduce more information after GJE.
+            for fact in facts:
+                constraints.append([fact])
 
+            
             """
             How the preprocessing works:
             Get all the literals involved in parity constraints
@@ -192,7 +196,7 @@ class Simplex_GJE:
                     ## Consequences
                     self.__consequences.extend(constraint)
                     pos = self.__literals.index(abs(constraint[0]))
-                    for row in self.__matrix:
+                    for row in matrix:
                         del row[pos]
                     self.__literals.pop(pos)
                 elif longer_xor < 2:
