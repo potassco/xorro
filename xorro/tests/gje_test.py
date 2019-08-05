@@ -2,6 +2,7 @@
 Gauss-Jordan Tests Suite
 """
 from xorro import gje
+from xorro import gje_simplex as simplex
 import numpy as np
 
 def cols_state_to_matrix(state):
@@ -46,7 +47,8 @@ def solve_gje_(m, show):
         m = gje.remove_rows_zeros(m)
         m = np.array([np.array(xi) for xi in m])
         m = gje.perform_gauss_jordan_elimination_(m, show)
-    return m#.tolist()
+    return m
+    
 
 
 """
@@ -463,3 +465,80 @@ def test_more_rows(self):
                                  [1, 0, 0]],False).tolist(),
                      [[1, 0, 0],
                       [0, 1, 1]])
+
+
+def test_incremental_reduce(self):
+    mm = simplex.Matrix([[1, 0, 0, 1],
+                         [1, 1, 1, 1],
+                         [0, 0, 1, 0]])
+    self.assertEqual(mm.__reduce_matrix__(0,0),
+                     [[1, 0, 0, 1],
+                      [0, 1, 1, 0],
+                      [0, 0, 1, 0]])
+
+
+    mm = simplex.Matrix([[1, 0, 0, 1],
+                         [0, 1, 1, 0],
+                         [0, 0, 1, 0]])
+    self.assertEqual(mm.__reduce_matrix__(2,2),
+                     [[1, 0, 0, 1],
+                      [0, 1, 0, 0],
+                      [0, 0, 1, 0]])
+
+    
+    mm = simplex.Matrix([[1, 0, 0, 1, 1, 1],
+                         [0, 1, 1, 1, 1, 0],
+                         [0, 0, 1, 1, 1, 0]])
+    self.assertEqual(mm.__reduce_matrix__(4,0),
+                     [[1, 0, 0, 1, 1, 1],
+                      [1, 1, 1, 0, 0, 1],
+                      [1, 0, 1, 0, 0, 1]])
+
+    
+    mm = simplex.Matrix([[1, 0, 0, 1, 1, 0, 1],
+                         [0, 1, 0, 0, 1, 1, 0],
+                         [0, 0, 1, 1, 0, 1, 0]])
+    self.assertEqual(mm.__reduce_matrix__(5,1),
+                     [[1, 0, 0, 1, 1, 0, 1],
+                      [0, 1, 0, 0, 1, 1, 0],
+                      [0, 1, 1, 1, 1, 0, 0]])
+
+
+def test_remove_row(self):
+    mm = simplex.Matrix([[1, 0, 0, 1],
+                         [1, 1, 1, 1],
+                         [0, 0, 1, 0]])
+    self.assertEqual(mm.__remove_row__([1, 0, 0, 1]),
+                     [[1, 1, 1, 1],
+                      [0, 0, 1, 0]])
+
+
+    mm = simplex.Matrix([[1, 0, 0, 1],
+                         [0, 1, 1, 0],
+                         [0, 0, 1, 0]])
+    self.assertEqual(mm.__remove_row__([0, 1, 1, 0]),
+                     [[1, 0, 0, 1],
+                      [0, 0, 1, 0]])
+
+    
+    mm = simplex.Matrix([[1, 0, 0, 1, 1, 1],
+                         [0, 1, 1, 1, 1, 0],
+                         [0, 0, 1, 1, 1, 0]])
+    self.assertEqual(mm.__remove_row__([0, 1, 1, 1, 1, 0]),
+                     [[1, 0, 0, 1, 1, 1],
+                      [0, 0, 1, 1, 1, 0]])
+
+    
+    mm = simplex.Matrix([[1, 0, 0, 1, 1, 0, 1],
+                         [0, 1, 0, 0, 1, 1, 0],
+                         [0, 0, 1, 1, 0, 1, 0]])
+    self.assertEqual(mm.__remove_row__([0, 0, 1, 1, 0, 1, 0]),
+                     [[1, 0, 0, 1, 1, 0, 1],
+                      [0, 1, 0, 0, 1, 1, 0]])
+
+def test_remove_col(self):
+    mm = simplex.Matrix([[1, 0, 0, 1, 1, 0, 1],
+                         [0, 1, 0, 0, 1, 1, 0]])
+    self.assertEqual(mm.__remove_col__(2),
+                     [[1, 0, 1, 1, 0, 1],
+                      [0, 1, 0, 1, 1, 0]])

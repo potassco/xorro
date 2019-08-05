@@ -3,6 +3,59 @@ from . import gje
 from itertools import chain
 import clingo
 
+class Matrix:
+    """
+    The Matrix maintains the following invariants:
+    1. Every row must contain at least three 1 entries
+    2. Two watched literals, one basic and one non basic
+    
+    """
+    def __init__(self, matrix):
+        self.__rows = len(matrix)
+        self.__cols = len(matrix[0])
+        self.__matrix = matrix
+
+    def __getitem__(self, idx):
+        return self.__matrix[idx]
+
+    def __setitem__(self, idx, item):
+        self.__matrix[idx] = item
+
+    def __get_rows__(self):
+        return self.__rows
+
+    def __get_cols__(self):
+        return self.__cols
+
+    def __print__(self):
+        for row in self.__matrix:
+            print(row)
+        print("")
+
+    def __reduce_matrix__(self, col, pos):
+        pivot_row = self.__matrix[pos]
+        pivot_val = self.__matrix[pos][col]
+        
+        for i in range(self.__rows):
+            if self.__matrix[i] != pivot_row and self.__matrix[i][col] == 1:
+                for k in range(self.__cols):
+                    self.__matrix[i][k] ^= pivot_row[k]
+
+        return self.__matrix
+
+    def __remove_row__(self, row):
+        self.__matrix.remove(row)
+        return self.__matrix
+
+    def __remove_col__(self, col):
+        for row in self.__matrix:
+            del row[col]
+        return self.__matrix
+
+
+        
+
+
 class XOR:
     """
     A XOR constraint maintains the following invariants:
@@ -229,6 +282,16 @@ class Simplex_GJE:
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
             pass
+
+
+        mm = Matrix([[1,0,0,1],
+                     [1,1,1,1],
+                     [0,0,1,0]])
+
+        mm.__print__()
+        mm.__reduce_matrix__(0, 0)
+        mm.__print__()
+                     
 
     def check(self, control):
         """

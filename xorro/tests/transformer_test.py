@@ -114,3 +114,12 @@ class TestProgramTransformer(TestCase):
     def test_more_rows(self):
         gje_test.test_more_rows(self)
 
+    def test_incremental_reduce(self):
+        gje_test.test_incremental_reduce(self)
+
+    def test_remove_row(self):
+        gje_test.test_remove_row(self)
+
+    def test_remove_col(self):
+        gje_test.test_remove_col(self)
+
