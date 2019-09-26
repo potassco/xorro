@@ -249,7 +249,7 @@ class XOR:
                 
 
 class Simplex_GJE:
-    def __init__(self, cutoff, display):
+    def __init__(self, cutoff):
         self.__states  = []
         self.__states_gje = []
         self.__sat = True
@@ -259,7 +259,7 @@ class Simplex_GJE:
         self.__matrix = []
         self.__basic_lits = []
         self.__lits_xor = []
-        self.__display = display
+        self.__display = False
 
         
     def __add_watch(self, ctl, xor, unassigned, thread_ids, states):
