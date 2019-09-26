@@ -61,7 +61,7 @@ class List:
     def translate(self, backend):
         return util.reduce(lambda l, r: translate_binary_xor(backend, l, r), self.__literals)
 
-def translate(mode, prg, cutoff):
+def translate(mode, prg, cutoff, display):
     if mode == "count":
         prg.add("__count", [], _dedent("""\
             :- { __parity(ID,even,X) } = N, N\\2!=0, __parity(ID,even).
@@ -86,7 +86,7 @@ def translate(mode, prg, cutoff):
         prg.register_propagator(State_GJE(cutoff))
 
     elif mode == "gje-simplex":
-        prg.register_propagator(Simplex_GJE(cutoff))
+        prg.register_propagator(Simplex_GJE(cutoff, display))
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
@@ -289,7 +289,7 @@ class Application:
         """
         transform(prg,files)
         prg.ground([("base", [])])
-        translate(self.__approach, prg, self.__cutoff)
+        translate(self.__approach, prg, self.__cutoff, self.__display.value)
         ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
 
         ## Remove temp file

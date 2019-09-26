@@ -3,15 +3,15 @@ from . import gje
 from itertools import chain
 import clingo
 
-def get_nogood(assignment, literals):
+def get_nogood(assignment, literals, display):
     ng = []
     for lit in literals:
-        print lit, assignment.value(lit)
+        if display:
+            print(lit, assignment.value(lit))
         if assignment.value(lit) is False:
             ng.append(-lit)
         elif assignment.value(lit) is True:
             ng.append( lit)
-
     return ng
 
 class Matrix:
@@ -57,24 +57,26 @@ class Matrix:
                         self.__matrix[i][k] ^= pivot_row[k]
                 else:
                     unaffected.append(i)
-
         return changes, unaffected
 
-    def __check_conflict__(self, literals, assignment):
+    def __check_conflict__(self, literals, assignment, display):
         conflict = True
         for row in self.__matrix:
             if row[-1] == 1: ## Find the potential conflicting parity
-                print literals
-                print row
+                if display:
+                    print(literals)
+                    print(row)
                 for i in range(len(row)-1):
                     if row[i] == 1:
                         assmt = assignment.value(literals[i])
-                        print row[i], literals[i], assmt
+                        if display:
+                            print(row[i], literals[i], assmt)
                         if assmt == True or assmt == None: ## If at least one literal is not False, then there is no conflict
                             conflict = False
                             break
 
-                        print conflict
+                        if display:
+                            print(conflict)
         return conflict
 
     def __remove_row__(self, row):
@@ -100,7 +102,7 @@ class Matrix:
         return xor
 
 
-    def get_implication(self, assignment, literals):
+    def get_implication(self, assignment, literals, display):
         xors = []
         unit = []
         partial_assignment = []
@@ -129,24 +131,39 @@ class Matrix:
                     xor[0] = -xor[0]
                 xors.append(xor)
 
-        #print xors
-        #print unit
+        if display:
+            print("xors after simplicacion %s"%xors)
+            print("unit clauses after simplification %s"%unit)
 
         ## UP
         state = []
         while True:
             state = unit[:]
             for lit in unit:
+                if display:
+                    print("lit %s"%lit)
                 for xor in xors:
+                    if display:
+                        print("xor %s"%xor)
                     if not xor:
                         continue
                     else:
                         if lit in xor:
+                            if display:
+                                print("positive case")
                             xor.remove(lit)
-                            if xor and lit < 0:
+                            if xor:# and lit > 0:
                                 xor[0] = -xor[0]## Keep the even parity
+                            #elif xor and lit < 0:
+                            #    xor[0] = -xor[0]## Keep the even parity
                         elif -lit in xor:
+                            if display:
+                                print("negative case")
                             xor.remove(-lit)
+                            #if xor and lit  0:
+                            #    xor[0] = -xor[0]## Keep the even parity
+                        if display:
+                            print(xor)
                         if len(xor) == 1: ## New implication
                             unit.append(xor[0])
                             xor.remove(xor[0])
@@ -154,7 +171,6 @@ class Matrix:
             if unit == state:
                 break
 
-        #print unit
         return unit, partial_assignment
 
         
@@ -233,7 +249,7 @@ class XOR:
                 
 
 class Simplex_GJE:
-    def __init__(self, cutoff):
+    def __init__(self, cutoff, display):
         self.__states  = []
         self.__states_gje = []
         self.__sat = True
@@ -243,6 +259,7 @@ class Simplex_GJE:
         self.__matrix = []
         self.__basic_lits = []
         self.__lits_xor = []
+        self.__display = display
 
         
     def __add_watch(self, ctl, xor, unassigned, thread_ids, states):
@@ -299,7 +316,7 @@ class Simplex_GJE:
             TODO: Analyze if the XORs belonging to the matrix are going to be handled in the same state as the other XORs or separately.
             """
             
-            print("constraints :%s"%constraints)
+            #print("constraints :%s"%constraints)
             for constraint in constraints:
                 for lit in constraint:
                     if abs(lit) not in self.__literals:
@@ -321,16 +338,18 @@ class Simplex_GJE:
                 self.__matrix.append(row)
 
             # Preprocess by reducing the matrix to Reduced Row Echelon Form
-            print("Initial Matrix")
-            gje.print_matrix(self.__matrix)
-            self.__matrix = gje.perform_gauss_jordan_elimination(self.__matrix,False)
-            print("Reduced Matrix")
-            gje.print_matrix(self.__matrix)
+            if self.__display:
+                print("Initial Matrix")
+                gje.print_matrix(self.__matrix)
+                self.__matrix = gje.perform_gauss_jordan_elimination(self.__matrix,False)
+                print("Reduced Matrix")
+                gje.print_matrix(self.__matrix)
 
             constraints = []
             ## Rebuild XORs after initial GJE
             ## Check cases if XORs of size 1, 2 or greater or equal than 3.
-            print("Rebuild xors")
+            if self.__display:
+                print("Rebuild xors")
             for row in self.__matrix:
                 constraint = []
                 for i in range(len(row)-1):
@@ -341,7 +360,8 @@ class Simplex_GJE:
                         constraint[0] = -constraint[0]
                     constraints.append(constraint)
 
-            print(constraints)
+            if self.__display:
+                print(constraints)
             longer_xor = 0
             for constraint in constraints:
                 if len(constraint) > 2:
@@ -377,19 +397,22 @@ class Simplex_GJE:
                     for lit in constraint:
                         for thread in range(init.number_of_threads):
                             self.__lits_xor[thread_id].setdefault(lit, []).append(xor)
-            print "lits_xor"
-            print self.__lits_xor
+            #if self.__display:
+                #print("lits_xor"
+                #print self.__lits_xor
 
             ## Get basic and non basic literals
             number_basics = len(self.__matrix)
             if number_basics > 0:
-                print("")
-                print("literals: %s"%self.__literals)
-                gje.print_matrix(self.__matrix)
-                print(constraints)
+                if self.__display:
+                    print("")
+                    print("literals: %s"%self.__literals)
+                    gje.print_matrix(self.__matrix)
+                    print("xors: %s"%constraints)
 
                 self.__basic_lits = self.__literals[0:number_basics]
-                print("basic lits: %s"%self.__basic_lits)
+                if self.__display:
+                    print("basic lits: %s"%self.__basic_lits)
                                             
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
@@ -397,14 +420,14 @@ class Simplex_GJE:
 
         self.m = Matrix(self.__matrix)
 
-        print self.m._Matrix__matrix
+        #print self.m._Matrix__matrix
 
         #mm.__print__(self.__literals)
         #mm.__reduce_matrix__(0, 0)
         #mm.__print__(self.__literals)
 
         #print self.__states
-        print self.__states_gje
+        #print self.__states_gje
                      
 
     def check(self, control):
@@ -437,169 +460,180 @@ class Simplex_GJE:
         basic = self.__basic_lits
         matrix = self.m
         #constraints = self.__constraints
+
+        if self.__display:
+            print("\nstate when propagations starts\n %s"%state)
         
         for literal in changes:
             variable = abs(literal)
-            print "propagate literal", literal, "variable", variable
+            if self.__display:
+                print("propagate literal %s variable %s"%(literal, variable))
 
-            if variable in state and state[variable]:
+            if variable in state and state[variable]: ## Because we are changing the xors during propagation
                 state[variable], watches = [], state[variable]
-                print state
+                if self.__display:
+                    print("state removed variable\n %s"%state)
                 assert(len(watches) > 0)
                 
                 for i in range(len(watches)):
-                    # Basic vabriables
-                    # GJE process
-                    if variable in basic:
-                        xor, unassigned = watches[i]
-                        if xor.propagate(control.assignment, unassigned):
-                            print "xor", xor._XOR__literals, "xor index", xor._XOR__index
-                            print "index", unassigned, "literal", xor._XOR__literals[unassigned]
+                    xor, unassigned = watches[i]
+                    if xor.propagate(control.assignment, unassigned):
+                        # Basic vabriables
+                        # GJE process
+                        if variable in basic:
+                            if self.__display:
+                                print("xor %s xor index %s"%(xor._XOR__literals, xor._XOR__index))
+                                print("index %s literal %s"%(unassigned, xor._XOR__literals[unassigned]))
                         
-                            print "Basic variable"
-                            print "Update basic literals"
+                                print("Basic variable")
+                                #print("Update basic literals"
                             col = self.__literals.index(xor._XOR__literals[unassigned])
                             pos = basic.index(variable)
-                            print "Update basic", variable, "with", xor._XOR__literals[unassigned], "in position", col
+                            if self.__display:
+                                print("Update basic %s with %s in position %s"%(variable, xor._XOR__literals[unassigned], col))
                             basic[pos] = xor._XOR__literals[unassigned]
-                            print basic
+                            if self.__display:
+                                print("basics %s"%basic)
 
-                            print "Check state"
-                            print state
                             for key in state.keys():
                                 state[key] = []
 
-                            print state
-
-                            
-                            print "Before reduce"
-                            matrix.__print__()
-                            print "Reduce matrix"
+                            if self.__display:
+                                print("Before reduce")
+                                matrix.__print__()
+                                print("Reduce matrix")
+                                
                             update_xor_index, unaffected = matrix.__reduce__(col, pos)
-                            print "update xor index", update_xor_index, "unaffected", unaffected
-                            print self.__literals
-                            matrix.__print__()
+                            
+                            if self.__display:
+                                print("update xor index %s unaffected %s"%(update_xor_index, unaffected))
+                                print(self.__literals)
+                                matrix.__print__()
                             
                             
-                            print ""
-                            print "Current xor"
-                            print xor._XOR__literals
-                            print "watches", xor._XOR__literals[0], xor._XOR__literals[1]
+                                print("")
+                                print("Current xor %s watches %s %s"%(xor._XOR__literals, xor._XOR__literals[0], xor._XOR__literals[1]))
                             self.__add_watch(control, xor, 0, (control.thread_id,), self.__states_gje)
                             self.__add_watch(control, xor, 1, (control.thread_id,), self.__states_gje)
                             
-                            print "Update xors"
                             updated_xors = []
                             unaffected_xors = []
                             for index in update_xor_index:
                                 updated_xors.append(matrix.__update_xors__(index, variable, self.__literals, True))
 
                             for xor_ in updated_xors:
-                                print xor_
-                                print "watches", xor_[0], xor_[1]
+                                if self.__display:
+                                    print("Update xors %s watches %s %s"%(xor_, xor_[0], xor_[1]))
                                 xor = XOR(xor_)
                                 self.__add_watch(control, xor, 0, (control.thread_id,), self.__states_gje)
                                 self.__add_watch(control, xor, 1, (control.thread_id,), self.__states_gje)
 
-                            print "Unaffected xors"
+                                
                             for index in unaffected:
                                 unaffected_xors.append(matrix.__update_xors__(index, variable, self.__literals, False))
 
                             for xor_ in unaffected_xors:
-                                print xor_
-                                print "watches", xor_[0], xor_[1]
+                                if self.__display:
+                                    print("Unaffected xors %s watches %s %s"%(xor_, xor_[0], xor_[1]))
                                 xor = XOR(xor_)
                                 self.__add_watch(control, xor, 0, (control.thread_id,), self.__states_gje)
                                 self.__add_watch(control, xor, 1, (control.thread_id,), self.__states_gje)
 
-                            print "state:"
-                            print state
-                            #print self.__states_gje[control.thread_id][variable]
-                            #if not state[variable]:
-                            #    print "remove watches"
-                            #    control.remove_watch( variable)
-                            #    control.remove_watch(-variable)
-                            #    state.pop(variable)
-                            #print "state:"
-                            #print state
-                            #print self.__states_gje
-                            #print "lits xor:"
-                            #print self.__lits_xor
-                            print ""
-                            
-                            print "Check for conflict"
+                            if self.__display:
+                                print("state:")
+                                print(state)
+                                print("")
+
+                            if self.__display:
+                                print("Check for conflict")
                             """
                             Check for conflicts after the matrix is reduced.
                             Analyze if it is only convinient to check for a potential conflict on all the rows except for the unaffected rows.
                             """
-                            conflict = matrix.__check_conflict__(self.__literals, control.assignment)
-                            print "Conflict: ", conflict
+                            conflict = matrix.__check_conflict__(self.__literals, control.assignment, self.__display)
+
+                            if self.__display:
+                                print("Conflict: ", conflict)
+
+                            if conflict:
+                                ## Return the partial assignment
+                                nogood = get_nogood(control.assignment, self.__literals, self.__display)
+                                if self.__display:
+                                    print("nogood", nogood)
+                                if not control.add_nogood(nogood) or not control.propagate():
+                                    return
+                            if self.__display:
+                                print("")
+
+                        else:
+                            if self.__display:
+                                print("Is not basic, continue")
+                                print("Reestablish the watches")
+                            # reestablish the remaining watches with the same
+                            # reason as in (*)
+                            #state[variable].append(watches[i])
+                            #state[variable].append((xor, unassigned))
+                            self.__add_watch(control, xor, unassigned, (control.thread_id,), self.__states_gje)
+                            if self.__display:
+                                print(state)
+                                print("")
+
+                    else:
+                        if self.__display:
+                            print("Cannot find unnasigned literal... check reason")
+                            print("Find implications/conflicts")
+                            for lit in self.__literals:
+                                print(lit, control.assignment.value(lit))
+
+                                print("")
+                        unit_clauses, partial = matrix.get_implication(control.assignment, self.__literals, self.__display)
+                        if self.__display:
+                            print("unit clauses %s  partial %s"%(unit_clauses, partial))
+                            print("")
+                        # UP
+                        # Here the constraint is either unit, satisfied, or
+                        # conflicting. In any case, we can keep the watch because
+                        # (*) the current decision level has to be backtracked
+                        # before the constraint can become unit again.
+                        if self.__display:
+                            print("Reestablish the watches regardless of the learnt clauses")
+                        state[variable].append((xor, unassigned))
+
+                        if not unit_clauses: ## Check for potential conflicts
+                            conflict = matrix.__check_conflict__(self.__literals, control.assignment, self.__display)
+                            if self.__display:
+                                print("Conflict: %s"%conflict)
 
                             if conflict:
                                 ## Return the partial assignment
                                 nogood = get_nogood(control.assignment, self.__literals)
-                                print "nogood", nogood
+                                if self.__display:
+                                    print("nogood %s"%nogood)
                                 if not control.add_nogood(nogood) or not control.propagate():
                                     return
-                            print ""
+                            if self.__display:
+                                print("")
 
+                        if self.__display:
+                            print("My reason\n")
+                        if unit_clauses is not None:
+                            for unit in unit_clauses:
+                                if self.__display:
+                                    print("nogood: %s"%([-unit]+partial))
+                                if not control.add_nogood([-unit]+partial) or not control.propagate():
+                                    return
                         else:
-                            print "Cannot find unnasigned literal... check reason"
-                            print "Find implications/conflicts"
-                            for lit in self.__literals:
-                                print lit, control.assignment.value(lit)
-
-                            print ""
-                            unit_clauses, partial = matrix.get_implication(control.assignment, self.__literals)
-                            print "unit clauses", unit_clauses, "partial", partial
-                            print ""
-                            # UP
-                            # Here the constraint is either unit, satisfied, or
-                            # conflicting. In any case, we can keep the watch because
-                            # (*) the current decision level has to be backtracked
-                            # before the constraint can become unit again.
-                            state[variable].append((xor, unassigned))
-
-                            print "My reason"
-                            if unit_clauses is not None:
-                                for unit in unit_clauses:
-                                    print "nogood:", [-unit]+partial
-                                    if not control.add_nogood([-unit]+partial) or not control.propagate():
-                                        return
-                            else:
-                                if not control.add_clause(partial) or not control.propagate():
-                                    return
-
-
-                            clause = xor.reason(control.assignment, unassigned)
-                            if clause is not None:
-                                print "UP reason"
-                                print "clause", clause
-                                if not control.add_clause(clause) or not control.propagate():
-                                    assert(state[variable])
-                                    # reestablish the remaining watches with the same
-                                    # reason as in (*)
-                                    state[variable].extend(watches[i + 1:])
-                                    return
-
-                    else:
-                        print "Is not basic, continue"
-                        print "Reestablish the watches"
-                        # reestablish the remaining watches with the same
-                        # reason as in (*)
-                        state[variable].append(watches[i])
-                        print state
-                    print ""
-                        
-                        
-                            
-                    # We found an unassigned literal, which is watched next.
-                    #self.__add_watch(control, xor, unassigned, (control.thread_id,), self.__states_gje)
-
+                            if self.__display:
+                                print("add clause (partial assignment)")
+                            if not control.add_clause(partial) or not control.propagate():
+                                return
                     
             
                 if len(state[variable]) == 0:
-                    print "remove watches"
+                    if self.__display:
+                        print("remove watches at the end of the cycle\n")
                     control.remove_watch( variable)
                     control.remove_watch(-variable)
                     state.pop(variable)
+
+            #elif variable in state: # For UP alone and xors of size 2
