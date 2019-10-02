@@ -64,7 +64,7 @@ class Matrix:
         for row in self.__matrix:
             xor = []
             if display:
-                print row
+                print(row)
             parity = row[-1]## Find the potential conflicting parity
             for i in range(len(row)-1):
                 if row[i] == 1:
@@ -74,29 +74,10 @@ class Matrix:
                     if assmt is True:
                         parity ^= 1
             if display:
-                print xor
+                print(xor)
             if not xor and parity == 1:
                 conflict = True
                 break
-
-                        
-            #if row[-1] == 1: 
-            #    if display:
-            #        print(literals)
-            #        print(row)
-            #    for i in range(len(row)-1):
-            #        if row[i] == 1:
-            #            assmt = assignment.value(literals[i])
-            #            if display:
-            #                print(row[i], literals[i], assmt)
-            #            if assmt == True or assmt == None: ## If at least one literal is not False, then there is no conflict
-            #                conflict = False
-            #                break
-
-            #            if display:
-            #                print(conflict)
-            #else:
-            #    conflict = False
                             
         return conflict
 
@@ -309,9 +290,6 @@ class Simplex_GJE:
         ## Get the constraints
         ret = util.symbols_to_xor_r(init.symbolic_atoms, util.default_get_lit(init))
 
-        #for atom in init.symbolic_atoms:
-        #    print init.solver_literal(atom.literal), atom.symbol
-
         ## Store indexes of columns to remove
         columns_to_remove = []
         
@@ -341,7 +319,6 @@ class Simplex_GJE:
             TODO: Analyze if the XORs belonging to the matrix are going to be handled in the same state as the other XORs or separately.
             """
             
-            #print("constraints :%s"%constraints)
             for constraint in constraints:
                 for lit in constraint:
                     if abs(lit) not in self.__literals:
@@ -451,11 +428,10 @@ class Simplex_GJE:
                 for i in reversed(range(len(colsums))):
                     if colsums[i] == 0:
                         if self.__display:
-                            print i, colsums[i], self.__literals[i]
+                            print("%s %s %s"%(i, colsums[i], self.__literals[i]))
                         self.__m.__remove_col__(i)
                         del self.__literals[i]
 
-                #print self.__literals
                 if self.__display:
                     print("")
                     print(self.__literals)
