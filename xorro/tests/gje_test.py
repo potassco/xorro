@@ -471,37 +471,28 @@ def test_incremental_reduce(self):
     mm = simplex.Matrix([[1, 0, 0, 1],
                          [1, 1, 1, 1],
                          [0, 0, 1, 0]])
-    self.assertEqual(mm.__reduce_matrix__(0,0),
-                     [[1, 0, 0, 1],
-                      [0, 1, 1, 0],
-                      [0, 0, 1, 0]])
+    self.assertEqual(mm.__reduce__(0,0),
+                     ([1],[2]))
 
 
     mm = simplex.Matrix([[1, 0, 0, 1],
                          [0, 1, 1, 0],
                          [0, 0, 1, 0]])
-    self.assertEqual(mm.__reduce_matrix__(2,2),
-                     [[1, 0, 0, 1],
-                      [0, 1, 0, 0],
-                      [0, 0, 1, 0]])
-
-    
+    self.assertEqual(mm.__reduce__(2,2),
+                     ([1],[0]))
+   
     mm = simplex.Matrix([[1, 0, 0, 1, 1, 1],
                          [0, 1, 1, 1, 1, 0],
                          [0, 0, 1, 1, 1, 0]])
-    self.assertEqual(mm.__reduce_matrix__(4,0),
-                     [[1, 0, 0, 1, 1, 1],
-                      [1, 1, 1, 0, 0, 1],
-                      [1, 0, 1, 0, 0, 1]])
+    self.assertEqual(mm.__reduce__(4,0),
+                     ([1,2],[]))
 
     
     mm = simplex.Matrix([[1, 0, 0, 1, 1, 0, 1],
                          [0, 1, 0, 0, 1, 1, 0],
                          [0, 0, 1, 1, 0, 1, 0]])
-    self.assertEqual(mm.__reduce_matrix__(5,1),
-                     [[1, 0, 0, 1, 1, 0, 1],
-                      [0, 1, 0, 0, 1, 1, 0],
-                      [0, 1, 1, 1, 1, 0, 0]])
+    self.assertEqual(mm.__reduce__(5,1),
+                     ([2],[0]))
 
 
 def test_remove_row(self):
