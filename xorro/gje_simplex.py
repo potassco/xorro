@@ -645,10 +645,7 @@ class Simplex_GJE:
                             if display:
                                 print("Is not basic, continue")
                                 print("Reestablish the watches")
-                            # reestablish the remaining watches with the same
-                            # reason as in (*)
-                            #state_xor[variable].append(watches[i])
-                            #state_xor[variable].append((xor, unassigned))
+                            # reestablish the remaining watches
                             self.__add_watch(control, xor, unassigned, (control.thread_id,), state_xor)
                             if display:
                                 print(state_xor_thread)
