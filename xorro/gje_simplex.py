@@ -6,8 +6,6 @@ import clingo
 def get_nogood(assignment, literals, display):
     ng = []
     for lit in literals:
-        if display:
-            print("%s %s"%(lit, assignment.value(lit)))
         if assignment.value(lit) is False:
             ng.append(-lit)
         elif assignment.value(lit) is True:
@@ -90,12 +88,17 @@ class Matrix:
             del row[col]
         return self.__matrix
 
-    def __update_xors__(self, xor_index, variable, literals, affected):
+    def __update_xors__(self, xor_index, variable, literals, assignment, affected):
         row = self.__matrix[xor_index]
         xor = []
+        assigned = []
         for i in range(len(literals)):
             if row[i] == 1 and literals[i] != variable:
-                xor.append(literals[i])
+                if assignment.value(literals[i]) is None:
+                    xor.append(literals[i])
+                else:
+                    assigned.append(literals[i])
+        xor = xor+assigned
         if row[-1] == 0:
             xor[0] = -xor[0]
 
@@ -257,7 +260,8 @@ class Simplex_GJE:
         self.__cutoff       = cutoff
         self.__literals     = []
         self.__matrix       = []
-        self.__basic_lits   = []
+        self.__basic_lits   = {}
+        self.__cols_lits    = {}
         self.__lits_xor     = []
         self.__display      = False
 
@@ -345,31 +349,17 @@ class Simplex_GJE:
                     self.__matrix.append(row)
 
                 # Preprocess by reducing the matrix to Reduced Row Echelon Form
-                if self.__display:
-                    print("Initial Matrix")
-                    print(self.__literals)
-                    gje.print_matrix(self.__matrix)
-
                 ## Reduce
                 self.__matrix = gje.perform_gauss_jordan_elimination(self.__matrix,False)
-
-                if self.__display:
-                    print("Reduced Matrix")
-                    print(self.__literals)
-                    gje.print_matrix(self.__matrix)
-
 
                 ## Rebuild XORs after initial GJE
                 ## Check cases if XORs of size 1, 2 or greater or equal than 3.
                 matrix = []
                 constraints = []
-                if self.__display:
-                    print("Rebuilding xors")
+                remove_columns = False
                 for row in self.__matrix:
                     constraint = []
                     elements = sum(row[:-1])
-                    if self.__display:
-                        print("the sum of this row is: %s"%elements)
                     ## UNSAT
                     if elements == 0 and row[-1] == 1:
                         self.__sat = False
@@ -381,10 +371,10 @@ class Simplex_GJE:
                                 constraint.append(self.__literals[i])
                         if row[-1] == 0:
                             constraint[0] = -constraint[0]
-                        #constraints.append(constraint)
                         self.__consequences.extend(constraint)
+                        remove_columns = True
                     ## Binary XORs
-                    elif elements == 2:
+                    elif elements == 2:                    
                         for i in range(len(row)-1):
                             if row[i] == 1:
                                 constraint.append(self.__literals[i])
@@ -393,6 +383,7 @@ class Simplex_GJE:
                         xor = XOR(constraint)
                         self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states)
                         self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states)
+                        remove_columns = True
                     ## Ternary XORs or greater
                     elif elements > 2:
                         for i in range(len(row)-1):
@@ -401,77 +392,65 @@ class Simplex_GJE:
                         if row[-1] == 0:
                             constraint[0] = -constraint[0]
                         constraints.append(constraint)
+                        ## Add the row to the matrix
+                        matrix.append(row)
+
+                # There is only one constraint of size 2 or greater, then pass it to the UP state
+                if len(constraints) == 1 and len(constraints[0]) > 1:
+                    for constraint in constraints:
+                        xor = XOR(constraint)
+                        self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states)
+                        self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states)
+
+                ## There are enough constraints to build the matrix
+                elif len(constraints) > 1:
+                    for constraint in constraints:
                         xor = XOR(constraint)
                         self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states_xor)
                         self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states_xor)
                         for lit in constraint:
                             for thread in range(init.number_of_threads):
                                 self.__lits_xor[thread_id].setdefault(lit, []).append(xor)
-
-                        ## Add the row to the matrix
-                        matrix.append(row)
-
-                if self.__display:
-                    print("matrix")
-                    gje.print_matrix(matrix)
-
-                ## Remove columns of zeros
-                colsums = [sum(i) for i in zip(*matrix)]
-                del colsums[-1]
-
-                if self.__display:
-                    print("colsums %s"%colsums)
-
-                ## Create the Matrix
-                self.__m = Matrix(matrix)
-
-                for i in reversed(range(len(colsums))):
-                    if colsums[i] == 0:
-                        if self.__display:
-                            print("%s %s %s"%(i, colsums[i], self.__literals[i]))
-                        self.__m.__remove_col__(i)
-                        del self.__literals[i]
-
-                if self.__display:
-                    print("")
-                    print(self.__literals)
-
-                ## Update the number of columns
-                self.__m._Matrix__cols = len(self.__literals)+1
-
-                if self.__display:
-                    gje.print_matrix(self.__m)
-
-                if self.__display:
-                    print("constraints \n %s"%constraints)
-
-                ## Get basic and non basic literals
-                number_basics = len(constraints)
-                if number_basics > 0:
-                    if self.__display:
-                        print("")
-                        print("literals: %s"%self.__literals)
-                        gje.print_matrix(self.__m)
-
-                    for constr in constraints:
-                        self.__basic_lits.append(abs(constr[0]))
-                    #self.__basic_lits = self.__literals[0:number_basics]
-                    if self.__display:
-                        print("basic lits: %s"%self.__basic_lits)
-
-
-                if self.__display:
-                    print("state \n%s"%self.__states)
-                    print("state xor \n%s"%self.__states_xor)
-
-            # There is only one constraint of size 2 or greater, then pass it to the UP state
-            elif len(constraints) == 1 and len(constraints[0]) > 1: 
-                for constraint in constraints:
-                    xor = XOR(constraint)
-                    self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states)
-                    self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states)
-                    
                                 
+                                  
+                    ## Create the Matrix
+                    self.__m = Matrix(matrix)
+
+                    ## Remove colums (and literals) only if parity constraints were removed from the matrix as consequences or binary xors
+                    if remove_columns:            
+                        ## Count the number of 1s per column
+                        colsums = [sum(i) for i in zip(*matrix)]
+                        del colsums[-1]
+
+                        ## Remove columns of zeros
+                        for i in reversed(range(len(colsums))):
+                            if colsums[i] == 0:
+                                self.__m.__remove_col__(i)
+                                del self.__literals[i]
+
+                        ## Update the number of columns
+                        self.__m._Matrix__cols = len(self.__literals)+1
+
+                    ## Get basic and non basic literals
+                    number_basics = len(constraints)
+                    if number_basics > 0:
+                        col = 0
+                        for lit in self.__literals:
+                            self.__cols_lits[lit] = col
+                            if col < len(constraints):
+                                self.__basic_lits[lit] = col
+                            col+=1
+
+            elif len(constraints) == 1:
+                ## There are no enough constraints for a matrix. The single constraint goes to the UP state or is a consequence
+                for constraint in constraints:
+                    if len(constraint) > 1:
+                        xor = XOR(constraint)
+                        self.__add_watch(init, xor, 0, range(init.number_of_threads), self.__states)
+                        self.__add_watch(init, xor, 1, range(init.number_of_threads), self.__states)
+                    else:
+                        self.__consequences.extend(constraint)
+                                                
         else:
             # NOTE: if the propagator is to be used standalone, this case has to be handled
             pass
@@ -509,22 +488,16 @@ class Simplex_GJE:
         state_thread     = self.__states[control.thread_id]
         state            = self.__states
         basic            = self.__basic_lits
+        columns          = self.__cols_lits
         matrix           = self.__m
         literals         = self.__literals
         display          = self.__display
-        
-        if display:
-            print("\nstate_xor when propagations starts\n %s"%state_xor)
-        
+                
         for literal in changes:
             variable = abs(literal)
-            if display:
-                print("propagate literal %s variable %s"%(literal, variable))
-
+        
             if variable in state_xor_thread and state_xor_thread[variable]: ## Because we are changing the xors during propagation
                 state_xor_thread[variable], watches = [], state_xor_thread[variable]
-                if display:
-                    print("state_xor removed variable\n %s"%state_xor_thread)
                 assert(len(watches) > 0)
                 
                 for i in range(len(watches)):
@@ -533,66 +506,31 @@ class Simplex_GJE:
                         # Basic vabriables
                         # GJE process
                         if variable in basic:
-                            if display:
-                                print("xor %s xor index %s"%(xor._XOR__literals, xor._XOR__index))
-                                print("index %s literal %s"%(unassigned, xor._XOR__literals[unassigned]))
-                        
-                                print("Basic variable")
-                                #print("Update basic literals"
-                            col = literals.index(xor._XOR__literals[unassigned])
-                            pos = basic.index(variable)
-                            if display:
-                                print("Update basic %s with %s in position %s"%(variable, xor._XOR__literals[unassigned], col))
-                            basic[pos] = xor._XOR__literals[unassigned]
-                            if display:
-                                print("basics %s"%basic)
+                            row = basic[variable]
+                            del basic[variable]
+                            col = columns[abs(xor._XOR__literals[unassigned])]
+                            basic[xor._XOR__literals[unassigned]] = row
 
                             for key in state_xor_thread.keys():
                                 state_xor_thread[key] = []
-
-                            if display:
-                                print("Before reduce")
-                                print(literals)
-                                matrix.__print__()
-                                print("Reduce matrix")
-                                print("col %s pos %s"%(col, pos))
                                 
-                            update_xor_index, unaffected = matrix.__reduce__(col, pos)
-                            
-                            if display:
-                                print("update xor index %s unaffected %s"%(update_xor_index, unaffected))
-                                print(literals)
-                                matrix.__print__()
-                            
-                            
-                                print("")
-                                print("Current xor %s watches %s %s"%(xor._XOR__literals, xor._XOR__literals[0], xor._XOR__literals[1]))
+                            update_xor_index, unaffected = matrix.__reduce__(col, row)
+                                                        
                             self.__add_watch(control, xor, 0, (control.thread_id,), state_xor)
                             self.__add_watch(control, xor, 1, (control.thread_id,), state_xor)
                             
                             updated_xors = []
                             unaffected_xors = []
                             for index in update_xor_index:
-                                updated_xors.append(matrix.__update_xors__(index, variable, literals, True))
+                                updated_xors.append(matrix.__update_xors__(index, variable, literals, control.assignment, True))
 
                             if display:
                                 print("")
                             for xor_ in updated_xors:
-                                if display:
-                                    print("Update xors %s watches %s %s"%(xor_, xor_[0], xor_[1]))
                                 if len(xor_) == 2:
-                                    if display:
-                                        print("!!!!!!!!!!!!!! Move this xor to the other state")
                                     xor = XOR(xor_)
                                     self.__add_watch(control, xor, 0, (control.thread_id,), state)
                                     self.__add_watch(control, xor, 1, (control.thread_id,), state)
-
-                                    if display:
-                                        print("Remove lits")
-                                        print("Remove rows")
-                                        print("Remove columns")
-
-                                        print("!!!!!!!!!!!!!! Check if the matrix contain only a single xor. If yes move it to the other state")
                                 elif len(xor_) == 1:
                                     ## Consequences
                                     self.__consequences.extend(xor_)
@@ -600,119 +538,52 @@ class Simplex_GJE:
                                     xor = XOR(xor_)
                                     self.__add_watch(control, xor, 0, (control.thread_id,), state_xor)
                                     self.__add_watch(control, xor, 1, (control.thread_id,), state_xor)
-
                                 
                             for index in unaffected:
-                                unaffected_xors.append(matrix.__update_xors__(index, variable, literals, False))
+                                unaffected_xors.append(matrix.__update_xors__(index, variable, literals, control.assignment, False))
 
                             for xor_ in unaffected_xors:
-                                if display:
-                                    print("Unaffected xors %s watches %s %s"%(xor_, xor_[0], xor_[1]))
                                 xor = XOR(xor_)
                                 self.__add_watch(control, xor, 0, (control.thread_id,), state_xor)
                                 self.__add_watch(control, xor, 1, (control.thread_id,), state_xor)
 
-                            if display:
-                                print("state_xor_thread:")
-                                print(state_xor_thread)
-                                print("")
-
-                            if display:
-                                print("Check for conflict")
-                                for lit in literals:
-                                    print("%s %s"%(lit, control.assignment.value(lit)))
-                                print("")
-                            """
-                            Check for conflicts after the matrix is reduced.
-                            Analyze if it is only convinient to check for a potential conflict on all the rows except for the unaffected rows.
-                            """
-                            conflict = matrix.__check_conflict__(literals, control.assignment, display)
-
-                            if display:
-                                print("Conflict: %s"%conflict)
-
-                            if conflict:
-                                ## Return the partial assignment
-                                nogood = get_nogood(control.assignment, literals, display)
-                                if display:
-                                    print("nogood: %s"%nogood)
-                                if not control.add_nogood(nogood) or not control.propagate():
-                                    return
-                            if display:
-                                print("")
-
                         else:
-                            if display:
-                                print("Is not basic, continue")
-                                print("Reestablish the watches")
                             # reestablish the remaining watches
                             self.__add_watch(control, xor, unassigned, (control.thread_id,), state_xor)
-                            if display:
-                                print(state_xor_thread)
-                                print("")
 
-                    else:
-                        if display:
-                            print("Cannot find unnasigned literal... check reason")
-                            print("Find implications/conflicts")
-                            for lit in literals:
-                                print("%s %s"%(lit, control.assignment.value(lit)))
-                            print("")
+                    else: ## If cannot propagate
                         unit_clauses, partial = matrix.get_implication(control.assignment, literals, display)
-                        if display:
-                            print("unit clauses %s  partial %s"%(unit_clauses, partial))
-                            print("")
                         # UP
                         # Here the constraint is either unit, satisfied, or
                         # conflicting. In any case, we can keep the watch because
                         # (*) the current decision level has to be backtracked
                         # before the constraint can become unit again.
-                        if display:
-                            print("Reestablish the watches regardless of the learnt clauses")
-                            print(literals)
                         state_xor_thread[variable].append((xor, unassigned))
 
                         if not unit_clauses: ## Check for potential conflicts
                             conflict = matrix.__check_conflict__(literals, control.assignment, display)
-                            if display:
-                                print("Conflict: %s"%conflict)
 
                             if conflict:
                                 ## Return the partial assignment
                                 nogood = get_nogood(control.assignment, literals, display)
-                                if display:
-                                    print("nogood %s"%nogood)
                                 if not control.add_nogood(nogood) or not control.propagate():
                                     return
-                            if display:
-                                print("")
 
-                        if display:
-                            print("My reason\n")
                         if unit_clauses is not None:
                             for unit in unit_clauses:
-                                if display:
-                                    print("nogood: %s"%([-unit]+partial))
                                 if not control.add_nogood([-unit]+partial) or not control.propagate():
                                     return
                         else:
-                            if display:
-                                print("add clause (partial assignment)")
                             if not control.add_clause(partial) or not control.propagate():
                                 return
-                    
-            
+                                
                 if len(state_xor_thread[variable]) == 0:
-                    if display:
-                        print("+++++++++++remove watches at the end of the cycle\n")
                     control.remove_watch( variable)
                     control.remove_watch(-variable)
                     state_xor_thread.pop(variable)
 
             # Plain UP for XOR constraints of size 2
             if variable in state_thread:# and state[variable]:
-                if display:
-                    print("XOR of size 2")
                 state_thread[variable], watches = [], state_thread[variable]
                 assert(len(watches) > 0)
                 for i in range(len(watches)):
