@@ -87,7 +87,7 @@ def translate(mode, prg, cutoff):
         prg.register_propagator(UnitPropagator())
 
     elif mode == "gje-fp":
-        prg.register_propagator(WatchesUnitPropagator())
+        prg.register_propagator(UnitPropagator())
         prg.register_propagator(Propagate_GJE(cutoff))
 
     elif mode == "gje-prop":
