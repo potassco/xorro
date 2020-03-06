@@ -303,5 +303,4 @@ def transform(inputs, add):
         if statement is not None:
             add(statement)
     for s in inputs:
-        _clingo.parse_program(s, add_if_not_none)
-
+        _clingo.parse_program(s, add_if_not_none)        

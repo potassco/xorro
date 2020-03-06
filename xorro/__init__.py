@@ -11,12 +11,16 @@ main  -- Main function starting an extended clingo application.
 
 from . import util
 from . import transformer as _tf
+from . import normal_form as _nf
 from .countp import CountCheckPropagator
 from .watches_up import WatchesUnitPropagator
 from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
 from .gje_simplex import Simplex_GJE
+from .gje_xorsat import XorSat_GJE
+from .up_extended import UPExtendedPropagator
+from .up_total import UPTotalPropagator
 from random import sample
 import sys as _sys
 import os as _os
@@ -35,7 +39,14 @@ def transform(prg, files):
         if len(files) == 0:
             files.append(_sys.stdin)
         _tf.transform((f.read() for f in files), b.add)
-            
+
+def normal_form(prg, files):
+    with prg.builder() as b:
+        files = [open(f) for f in files]
+        if len(files) == 0:
+            files.append(_sys.stdin)
+        _nf.transform((f.read() for f in files), b.add)
+        
 class Leaf:
     def __init__(self, atom):
         self.__atom = atom
@@ -87,6 +98,15 @@ def translate(mode, prg, cutoff):
 
     elif mode == "gje-simplex":
         prg.register_propagator(Simplex_GJE(cutoff))
+
+    elif mode == "gje-xorsat":
+        prg.register_propagator(XorSat_GJE())
+
+    elif mode == "up-extended":
+        prg.register_propagator(UPExtendedPropagator())
+
+    elif mode == "up-total":
+        prg.register_propagator(UPTotalPropagator())
 
     elif mode in ["list", "tree"]:
         def to_tree(constraint):
@@ -144,7 +164,7 @@ class Application:
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex", "gje-xorsat", "up-extended", "up-total"]
 
     def __parse_cutoff(self, value):
         """
@@ -219,10 +239,17 @@ class Application:
         models = []
 
         """
+        Transform each input parity constraints into their normal-form
+        A parity constraint is in normal-form if:
+        1) all the elements within are positive, and
+        2) pairs of duplicate elements are removed
+        """
+        #normal_form(prg,files)
+
+        """
         Sampling features before grounding/solving
         Building random parity constraints and configure clingo control
         """
-        add_theory = True
         
         if self.__sampling.value:
             selected = []
@@ -231,8 +258,9 @@ class Application:
 
             s = self.__s
             q = self.__q
-            xors = util.generate_random_xors(prg, files, s, q)
-            add_theory = False
+
+            cl = _clingo.Control()
+            xors = util.generate_random_xors(cl, files, s, q)
             if self.__display.value:
                 print(xors)
             files.append("examples/__temp_xors.lp")
@@ -242,8 +270,8 @@ class Application:
         """
         if self.__pre_gje.value:
             print("Performing GJE preprocessing")
-            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, add_theory)
-            add_theory = False
+            cl = _clingo.Control()
+            xors_lits, xors_parities, all_lits = util.get_xors(cl, files)
             prepro_xors, prepro_pars = util.pre_gje(xors_lits, xors_parities, all_lits, self.__display.value)
 
             xors = ""
@@ -251,11 +279,11 @@ class Application:
                 xors = util.build_theory_atoms(xors,prepro_xors[i], prepro_pars[i])
             if self.__display.value:
                 ## Display all the XORs after the GJE preprocessing
-                print("")
+                print("Simplified parity constraints after GJE")
                 print(xors)
 
             ## Update the files
-            files = util.write_file(files, xors, "")
+            files = util.write_file("examples/__pre_gje_.lp", files, xors, "")
             ## Remove the file
             
         """
@@ -264,25 +292,32 @@ class Application:
         if self.__split >=2:
             print("Splitting XORs")
             choice_rule = [None]
-            xors_lits, xors_parities, all_lits = util.get_xors(prg, files, add_theory)
+            cl = _clingo.Control()
+            xors_lits, xors_parities, all_lits = util.get_xors(cl, files)
 
             if self.__display.value:
                 print("Total number of XORs: %s"%len(xors_lits))
 
-            prepro_xors, prepro_pars, choice_rule = util.split(xors_lits, xors_parities, self.__split, self.__display.value)
+            prepro_xors, prepro_pars, choice_rule, splitted = util.split(xors_lits, xors_parities, self.__split, self.__display.value)
 
             xors = ""
             for i in range(len(prepro_xors)):
                 xors = util.build_theory_atoms(xors,prepro_xors[i], prepro_pars[i])
             if self.__display.value:
-                ## Display all the XORs after the split
-                print("")
+                if splitted:
+                    ## Display all the XORs after the split
+                    print("")
+                    print("Splitted parity constraints")
+                else:
+                    print("")
+                    print("No parity constraint was split")
                 print(xors)
                 for choice in choice_rule:
                     print(choice)
 
-            ## Update the files
-            files = util.write_file(files, xors, choice_rule)
+            if splitted:
+                ## Update the files
+                files = util.write_file("examples/__split_.lp", files, xors, choice_rule)
         
         """
         Standard xorro workflow
@@ -292,9 +327,11 @@ class Application:
         translate(self.__approach, prg, self.__cutoff)
         ret = prg.solve(None, lambda model: models.append(model.symbols(shown=True)))
 
-        ## Remove temp file
-        if _os.path.exists("examples/__rewritten_program.lp"):
-            _os.remove("examples/__rewritten_program.lp")
+        ## Remove temp files
+        if _os.path.exists("examples/__pre_gje_.lp"):
+            _os.remove("examples/__pre_gje_.lp")
+        if _os.path.exists("examples/__split_.lp"):
+            _os.remove("examples/__split_.lp")
         
         """
         Sample from all answer sets remaining in the cluster

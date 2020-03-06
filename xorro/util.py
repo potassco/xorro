@@ -138,7 +138,7 @@ def generate_random_xors(prg, files, s, q):
     return xors
 
 
-def get_xors(prg, files, add_theory):
+def get_xors(prg, files):
     """
     Get XORs from encoding(s)/instance(s)
     """
@@ -149,14 +149,13 @@ def get_xors(prg, files, add_theory):
 
     ## Theory is added when Random XORs are built.
     ## So, if not sampling, theory must be added here.
-    ## This must be substitute by using the AST
-    if add_theory:        
-        prg.add("base", [], _dedent("""\
-        #theory parity { 
-         element {}; 
-         &odd/0 : element, directive; 
-         &even/0 : element, directive }.
-        """))
+    ## This must be substitute by using the AST        
+    prg.add("base", [], _dedent("""\
+    #theory parity { 
+    element {}; 
+    &odd/0 : element, directive; 
+    &even/0 : element, directive }.
+    """))
 
     prg.ground([("base", [])])
 
@@ -170,14 +169,23 @@ def get_xors(prg, files, add_theory):
         lits = []
         
         for e in atom.elements:
-            if len(e.terms) == 2:
-                lits.append(str(e.terms[1]))
-                if str(e.terms[1]) not in all_lits:
-                    all_lits.append(str(e.terms[1]))
-            else:
-                lits.append(str(e.terms[0]))
-                if str(e.terms[0]) not in all_lits:
-                    all_lits.append(str(e.terms[0]))
+            element_str = str(e)
+            condition = element_str.split(':')[-1]
+            if "not " in condition:
+                condition = condition.replace("not ", '')
+            lits.append(condition)
+            if condition not in all_lits:
+                all_lits.append(condition)
+            
+            
+            #if len(e.terms) == 2:
+            #    lits.append(str(e.terms[1]))
+            #    if str(e.terms[1]) not in all_lits:
+            #        all_lits.append(str(e.terms[1]))
+            #else:
+            #    lits.append(str(e.terms[0]))
+            #    if str(e.terms[0]) not in all_lits:
+            #        all_lits.append(str(e.terms[0]))
         xors_lits.append(lits)
 
     return xors_lits, xors_parities, all_lits
@@ -235,6 +243,7 @@ def split(xors, parities, split, display):
     splitted_pars = []
     aux_index = 0
     choices = []
+    splitted = False
     
     ## If len of xor is less or equal the split value, do not split
     for i in range(len(xors)):
@@ -247,6 +256,7 @@ def split(xors, parities, split, display):
         else:
             if display:
                 print("Splitting XOR %s"%(i+1))
+            splitted = True
             sub_xors, choice_rule, aux_index = split_x(xors[i], split, aux_index+1)
             choices.append(choice_rule)
             sub_pars = [0] * len(sub_xors)
@@ -256,7 +266,7 @@ def split(xors, parities, split, display):
                 splitted_xors.append(sub_xors[i])
                 splitted_pars.append(sub_pars[i])
 
-    return splitted_xors, splitted_pars, choices
+    return splitted_xors, splitted_pars, choices, splitted
 
 
 def pre_gje(xors_lits, xors_parities, all_lits, show):
@@ -300,12 +310,12 @@ def pre_gje(xors_lits, xors_parities, all_lits, show):
     return updated_xors, updated_pars
 
 
-def write_file(files, xors, add_rules):
+def write_file(fname, files, xors, add_rules):
     """
     Rewrite input files with preprocessed parity constraints
     """
     ## Create temp file
-    file_ = open("examples/__rewritten_program.lp", 'w')
+    file_ = open(fname, 'w')
 
     ## Get lines
     lines = list(chain.from_iterable(open(f) for f in files))
@@ -326,6 +336,6 @@ def write_file(files, xors, add_rules):
     file_.close()
 
     ## Update files list
-    files = ["examples/__rewritten_program.lp"]
+    files = [fname]
     
     return files
