@@ -18,7 +18,7 @@ from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
 from .gje_simplex import Simplex_GJE
-from .gje_xorsat import XorSat_GJE
+#from .gje_xorsat import XorSat_GJE
 from .up_extended import UPExtendedPropagator
 from .up_total import UPTotalPropagator
 from random import sample
