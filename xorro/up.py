@@ -70,7 +70,7 @@ class XOR:
 
         return None if assignment.is_true(clause[-1]) else clause
 
-class WatchesUnitPropagator:
+class UnitPropagator:
     def __init__(self):
         self.__states  = []
         self.__sat = True

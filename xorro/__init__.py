@@ -13,7 +13,7 @@ from . import util
 from . import transformer as _tf
 from . import normal_form as _nf
 from .countp import CountCheckPropagator
-from .watches_up import WatchesUnitPropagator
+from .up import UnitPropagator
 from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
@@ -84,7 +84,7 @@ def translate(mode, prg, cutoff):
         prg.register_propagator(CountCheckPropagator())
 
     elif mode == "up":
-        prg.register_propagator(WatchesUnitPropagator())
+        prg.register_propagator(UnitPropagator())
 
     elif mode == "gje-fp":
         prg.register_propagator(WatchesUnitPropagator())
