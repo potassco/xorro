@@ -11,7 +11,7 @@ main  -- Main function starting an extended clingo application.
 
 from . import util
 from . import transformer as _tf
-from . import normal_form as _nf
+#from . import normal_form as _nf
 from .countp import CountCheckPropagator
 from .up import UnitPropagator
 from .gje_fp import Propagate_GJE
