@@ -1,6 +1,7 @@
 """
 Gauss-Jordan Tests Suite
 """
+import xorro
 from xorro import gje
 from xorro import gje_simplex as simplex
 import numpy as np
