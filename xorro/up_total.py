@@ -10,6 +10,13 @@ from . import util
 class XOR:
     def __init__(self, literals):
         self.__literals = literals
+        
+    def up(self, ass):
+        conflict = True
+        for lit in self:
+            if ass.is_true(lit): conflict ^= True
+        if conflict:
+            return [lit if ass.is_true(lit) else -lit for lit in self]
 
     def up(self, ass):
         #if not sum(1 for lit in self if ass.is_true(lit)) % 2:
@@ -31,9 +38,6 @@ class XOR:
 
     def __iter__(self):
         return iter(self.__literals)
-
-    def __getitem__(self, idx):
-        return self.__literals[idx]
 
 class UPTotalPropagator:
     def __init__(self):
