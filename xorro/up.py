@@ -105,8 +105,7 @@ class UnitPropagator:
             self.__sat = False
         else:
             constraints, facts = ret
-            constraints.extend([fact] for fact in facts)
-            #self.__consequences.extend(facts)
+            self.__consequences.extend(facts)
             for constraint in constraints:
                 xor = XOR(constraint)
                 self.__add_watch(init, xor, 0, range(init.number_of_threads))
