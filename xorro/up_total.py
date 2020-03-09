@@ -18,24 +18,6 @@ class XOR:
         if conflict:
             return [lit if ass.is_true(lit) else -lit for lit in self]
 
-    def up(self, ass):
-        #if not sum(1 for lit in self if ass.is_true(lit)) % 2:
-        #    return [lit if ass.is_true(lit) else -lit for lit in self]
-        nogood = []
-        conflict = True
-        if self[0] < 0:
-            conflict = False
-
-        for lit in self:
-            lit = abs(lit)
-            if ass.is_true(lit):
-                nogood.append( lit)
-                conflict ^= True
-            elif ass.is_false(lit):
-                nogood.append(-lit)
-
-        return nogood if conflict else None
-
     def __iter__(self):
         return iter(self.__literals)
 
