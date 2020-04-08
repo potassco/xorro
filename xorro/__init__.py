@@ -106,7 +106,7 @@ def translate(mode, prg, cutoff):
     elif mode == "up-fixpoints":
         prg.register_propagator(UPExtendedPropagator())
 
-    elif mode == "up-total":
+    elif mode == "up-check":
         prg.register_propagator(UPTotalPropagator())
 
     elif mode == "tree-check":
@@ -168,7 +168,7 @@ class Application:
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex", "gje-xorsat", "up-fixpoints", "up-total", "tree-check"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex", "gje-xorsat", "up-fixpoints", "up-check", "tree-check"]
 
     def __parse_cutoff(self, value):
         """

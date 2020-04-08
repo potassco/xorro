@@ -3,6 +3,7 @@ This xor propagator actually does not interfere with clasp's propagation.  In
 fact we just check by unit propagating assinged literals given by clasp
 respecting the parity given for each xor constraint In case of conflict, add
 the nogood and let clasp to propagate again
+This propagator evaluates each xor as a binary tree
 """
 
 from . import util
