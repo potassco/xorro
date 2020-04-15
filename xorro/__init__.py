@@ -19,7 +19,7 @@ from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
 from .gje_simplex import Simplex_GJE
 #from .gje_xorsat import XorSat_GJE
-from .up_fixpoints import UPExtendedPropagator
+from .up_extended import UPExtendedPropagator
 from .up_total import UPTotalPropagator
 from .tree_check import TreeCheckPropagator
 from random import sample
@@ -87,10 +87,6 @@ def translate(mode, prg, cutoff):
     elif mode == "up":
         prg.register_propagator(UnitPropagator())
 
-    elif mode == "gje-fp":
-        prg.register_propagator(UnitPropagator())
-        prg.register_propagator(Propagate_GJE(cutoff))
-
     elif mode == "gje-prop":
         prg.register_propagator(Reason_GJE(cutoff))
 
@@ -102,9 +98,6 @@ def translate(mode, prg, cutoff):
 
     elif mode == "gje-xorsat":
         prg.register_propagator(XorSat_GJE())
-
-    elif mode == "up-fixpoints":
-        prg.register_propagator(UPExtendedPropagator())
 
     elif mode == "up-check":
         prg.register_propagator(UPTotalPropagator())
@@ -168,7 +161,7 @@ class Application:
         Parse approach argument.
         """
         self.__approach = str(value)
-        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-fp", "gje-prop", "gje-prop-n", "gje-simplex", "gje-xorsat", "up-fixpoints", "up-check", "tree-check"]
+        return self.__approach in ["count", "list", "tree", "countp", "up", "gje-prop", "gje-prop-n", "gje-simplex", "gje-xorsat", "up-check", "tree-check"]
 
     def __parse_cutoff(self, value):
         """
