@@ -14,12 +14,10 @@ from . import transformer as _tf
 #from . import normal_form as _nf
 from .countp import CountCheckPropagator
 from .up import UnitPropagator
-from .gje_fp import Propagate_GJE
 from .gje_prop import Reason_GJE
 from .gje_prop_n import State_GJE
 from .gje_simplex import Simplex_GJE
-#from .gje_xorsat import XorSat_GJE
-from .up_extended import UPExtendedPropagator
+from .gje_xorsat import XorSat_GJE
 from .up_total import UPTotalPropagator
 from .tree_check import TreeCheckPropagator
 from random import sample
