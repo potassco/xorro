@@ -156,6 +156,7 @@ class XorSat_GJE:
             #The new xor counter should be made from each literal and check the assignments.
             #The assignments list may have no purpose
             ##If there are no common variables, there is no need to make GJE. Send them to the other state
+            ## Perform the reduce
             
             ## If exist an XORs conjunction
             if len(constraints) > 1:
