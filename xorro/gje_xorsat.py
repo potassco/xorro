@@ -257,11 +257,9 @@ class XorSat_GJE:
                             if not control.add_nogood(nogood) or not control.propagate():
                                 self.__update = True
                                 return
-
         if self.__update == True:
             self.__update = False
             
-
     def undo(self, thread_id, assignment, changes):
         """
         Remove from assignment
