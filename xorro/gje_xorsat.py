@@ -1,5 +1,4 @@
 from . import util
-from itertools import chain
 import clingo
 
 class XOR:
@@ -69,8 +68,7 @@ class XorSat_GJE:
         self.__consequences = []
         self.__assignment = []
         self.__lits_to_propagate = []
-        self.__display = False
-        self.__literals = []
+        self.__update = False
 
     def __add_watch(self, ctl, xor, i, thread_ids):
         """
@@ -91,18 +89,13 @@ class XorSat_GJE:
             for i in range(len(xor)):
                 lit = xor[i]
                 variable = abs(lit)
-                #print(variable, ctl.assignment.value(variable))
                 if ctl.assignment.value(variable) is None:
                     self.__basics[thread_id].setdefault(variable, []).append((xor))
-                    #print("  Unassinged lit: %s"%variable)
                     j = i
                     break
             xor[j], xor[0] = xor[0], xor[j]
             if xor[j] < 0 and i != 0:
                 xor[j], xor[0] = -xor[j], -xor[0]
-            #elif j == 0:
-            #    print("all assigned")
-            #    self.__basics[thread_id].setdefault(abs(xor[0]), []).append((xor))
 
     def __reduce(self, constr1, constr2, display):
         ## Reduce
@@ -114,19 +107,12 @@ class XorSat_GJE:
         if basic_1 < 0:
             parity_1 = 0
             basic_1 = -basic_1
-        if display:
-            print("  basic 1: %s, non basic: %s, parity: %s"%(basic_1,non_basic_1,parity_1))
-
         if basic_1 in constr2 or -basic_1 in constr2:
-            if display:
-                print("  reducing...")
             reduced = True
             parity_2 = 1
             if constr2[0] < 0:
                 parity_2 = 0
                 constr2[0] = -constr2[0]
-            if display:
-                print("  with %s, parity: %s"%(constr2,parity_2))
             constr2.remove(basic_1) ## Remove basic
             for lit in non_basic_1:
                 if lit not in constr2:
@@ -136,11 +122,6 @@ class XorSat_GJE:
             parity_2 ^= parity_1 ## Update parity
             if parity_2 == 0:
                 constr2[0] = -constr2[0]
-            if display:
-                print("  After reduce: %s, parity: %s"%(sorted(constr2), parity_2))
-        else:
-            if display:
-                print("  Not reducing, basic literal %s is not in the XOR: %s"%(basic_1, constr2))
         if not constr2 and parity_2 == 1:
             sat = False
         return reduced, sat 
@@ -192,15 +173,11 @@ class XorSat_GJE:
                     for i in range(len(constraints)):
                         ## Binary XORs
                         if len(constraints[i]) == 2:
-                            if self.__display:
-                                print("XOR ID: %s, %s"%(i, sorted(constraints[i])))
                             xor = XOR(0,list(sorted(constraints[i])))
                             self.__binary[thread_id].append(xor)            
                         ## Ternary or greater XORs
                         elif len(constraints[i]) > 2:         
                             self.__lits_to_propagate.append(len(constraints[i]))
-                            if self.__display:
-                                print("XOR ID: %s, %s"%(i, sorted(constraints[i])))
                             xor = XOR(k,sorted(constraints[i]))
                             k +=1
                             self.__tableau.append(xor)
@@ -209,32 +186,10 @@ class XorSat_GJE:
                                 self.__add_watch(init, xor, j, range(init.number_of_threads))
             ## Only one XOR exists
             elif len(constraints) == 1:
-                if self.__display:
-                    print("XOR ID: %s, %s"%(0, sorted(constraints[0])))
                 xor = XOR(0,list(sorted(constraints[0])))
                 self.__binary[thread_id].append(xor)   
 
         init.check_mode = clingo.PropagatorCheckMode.Fixpoint
-
-
-        ## Add all literals... this must be removed afterwards. Just to double check that the assingments and undos are tracked correctly
-        for xor in self.__tableau:
-            if self.__display:
-                print(xor._XOR__literals)
-            for lit in xor._XOR__literals:
-                if abs(lit) not in self.__literals:
-                    self.__literals.append(abs(lit))
-        
-        if self.__display:
-            print("")
-            print("State: %s"%self.__states)
-            print("")
-            print("Lits per XOR: %s"%self.__lits_to_propagate)
-            print("Binary XORs: %s"%self.__binary)
-            print("Basics: %s"%self.__basics)
-            print("Tableau: %s"%self.__tableau)
-            print("Literals: %s"%sorted(self.__literals))
-        
 
     def check(self, control):
         """
@@ -273,15 +228,19 @@ class XorSat_GJE:
         assignment   = self.__assignment
         basics       = self.__basics[control.thread_id]
         tableau      = self.__tableau
-        literals     = self.__literals
-        if self.__display:
-            print("\nState at beginning of propagate-----------------------------------------------------------------------------------------------------------------------------------------")
-            #for key, value in state.items():
-            #    __state = "%s: %s  "%(key, len(value))
-            #    print(__state,end = '')
-            #print("")
-        for literal in changes: ## To keep the relationship between propagations and undos
-            #print(changes)
+
+        if self.__update:
+            ## Update counters
+            for constraint in tableau:
+                id = constraint._XOR__id
+                literals = constraint._XOR__literals
+                unassigned = 0
+                for lit in literals:
+                    if control.assignment.value(lit) is None:
+                        unassigned+=1
+                to_propagate[id] = unassigned
+                                
+        for literal in changes:
             assignment.append(literal)
             variable = abs(literal)
             watches = state[variable]
@@ -289,111 +248,18 @@ class XorSat_GJE:
             for i in range(len(watches)):
                 if watches[i]:
                     xor = watches[i]
-                    ## Reduce the counter from the XOR for each assigned literal
-                    to_propagate[xor._XOR__id] -= 1
-            
-        for literal in changes:
-            #print(changes)
-            #assignment.append(literal)
-            #print("add", assignment, literal)
-            if self.__display:
-                print("add %s"%literal)
-                signed = 0
-                #for lit in literals:
-                #    if control.assignment.value(lit) is not None:
-                #        signed +=1
-                #print(" assignment: %s, %s of %s"%(sorted(assignment), len(self.__assignment), signed))
-                #print(" basics: %s"%basics)
-            variable = abs(literal)
-            watches = state[variable]
-            assert(len(watches) > 0)
-            for i in range(len(watches)):
-                if watches[i]:
-                    xor = watches[i]
-                    ## Reduce the counter from the XOR for each assigned literal
-                    #to_propagate[xor._XOR__id] -= 1
-                    #print(xor._XOR__id, to_propagate[xor._XOR__id])
-                    assert to_propagate[xor._XOR__id] > -1,"Negative literals left to propagate"
-
-                    #unass = 0
-                    #for lit in xor._XOR__literals:
-                    #    if control.assignment.value(lit) is None:
-                    #        unass+=1
-                    #if self.__display:
-                    #    print("remaining in XOR %s: %s of %s"%(xor._XOR__id, to_propagate[xor._XOR__id], unass))
-                    #to_propagate[xor._XOR__id] = unass
-                    #if  to_propagate[xor._XOR__id] < 10:
-                    #    print("XOR ID: %s, To propagate: %s _______________________________________________________"%(xor._XOR__id, to_propagate[xor._XOR__id]))
-                    #    ## Double check the literals to propagate
-                    #    print("left to propagate: %s"%unass)
-                    
-                    #if self.__display:
-                    #    print(" XOR id: %s, literals: %s, to propagate: %s"%(xor._XOR__id, xor._XOR__literals, to_propagate[xor._XOR__id]))
-
-                    ## The constraint is not unit, there are more literals to propagate and changes needs to be made
-                    ## Check basic and non basic literals and perform substitutions if needed
-                    if variable in basics and to_propagate[xor._XOR__id] > 1:
-                        if self.__display:
-                            print("  %s is a basic literal, perform swap"%variable)
-                            print("  XOR before swap: %s"%xor._XOR__literals)
-                            print("  basics before swap: %s"%basics)
-                        basics[variable] = []
-                        basics.pop(variable)
-                        self.__add_basic(control, xor, (control.thread_id,))
-                        if self.__display:
-                            print("  swapped: %s"%xor._XOR__literals)
-                            print("  basics after swap: %s"%basics)
-                        ## Reduce
-                        for constraint in tableau:
-                            if xor != constraint:
-                                prev_lits = [abs(lit) for lit in constraint._XOR__literals]
-                                status, _ = self.__reduce(xor._XOR__literals, constraint._XOR__literals, self.__display)
-                                if status:                                
-                                    id = constraint._XOR__id
-                                    if self.__display:
-                                        #print("  Status: %s update counters and remove watches"%status)
-                                        print("  Prev lits: %s"%prev_lits)
-                                    for lit in prev_lits:
-                                        state[lit].remove(constraint)
-                                        if len(state[lit]) == 0:
-                                            state.pop(lit)
-                                    if self.__display:
-                                        print("  New XOR: %s"%constraint._XOR__literals)
-                                    ## Add new literals/watches to state
-                                    unassigned = 0
-                                    for i in range(len(constraint)):
-                                        self.__add_watch(control, constraint, i, (control.thread_id,))
-                                        if control.assignment.value(constraint[i]) is None:
-                                            unassigned+=1
-                                    to_propagate[id] = unassigned#len(constraint._XOR__literals)
-                                    #if self.__display:
-                                    #    print("   Updating number of unassigned literals")
-                                    #assigned = 0
-                                    #for lit in assignment:
-                                    #    if lit in constraint._XOR__literals or -lit in constraint._XOR__literals:
-                                    #        assigned +=1
-                                    #to_propagate[id] = len(constraint._XOR__literals) - assigned
-                                    #if self.__display:
-                                    #    print("   Remaining: %s"%to_propagate[id])
-
-
+                    if self.__update == False:
+                        to_propagate[xor._XOR__id] -= 1
                     # Here the constraint is either unit, satisfied, or conflicting. 
                     if to_propagate[xor._XOR__id] == 1 or to_propagate[xor._XOR__id] == 0:
-                        #self.__display = True
-                        if self.__display:
-                            print("  XOR: %s, remaining: %s"%(xor._XOR__literals,to_propagate[xor._XOR__id]))
-                            print("  propagate or conflict")
                         nogood = xor.reason(control.assignment)
-                        if self.__display:
-                            print("  nogood: %s"%nogood)
                         if nogood is not None:
                             if not control.add_nogood(nogood) or not control.propagate():
+                                self.__update = True
                                 return
-                    #else:
-                    #    print("  XOR ID: %s, remaining: %s"%(xor._XOR__id,to_propagate[xor._XOR__id]))
-                        #self.__display = False
+        if self.__update == True:
+            self.__update = False
             
-
     def undo(self, thread_id, assignment, changes):
         """
         Remove from assignment
@@ -401,23 +267,11 @@ class XorSat_GJE:
         state  = self.__states[thread_id]
         assign = self.__assignment
         to_propagate = self.__lits_to_propagate
-        #removed = []
         for literal in changes:
-            #if self.__display:
-            #print("undo", assign, literal)
-            #    removed.append(literal)
-            #if literal in assign: ## This must be removed after fixing the state
-            assign.remove(literal)
+            if literal in assign:
+                assign.remove(literal)
             variable = abs(literal)
             watches = state[variable]
             for i in range(len(watches)):
                 xor = watches[i]
                 to_propagate[xor._XOR__id] += 1
-
-                #unass = 0
-                #for lit in xor._XOR__literals:
-                #    if assignment.value(lit) is None:
-                #        unass+=1
-                #to_propagate[xor._XOR__id] = unass
-        #if self.__display:
-        #    print("Removed literals: %s"%removed)
