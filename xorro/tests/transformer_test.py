@@ -35,6 +35,7 @@ def solve(s, mode):
 
 class TestProgramTransformer(TestCase):
 
+
     modes = ["count", "list", "tree", "countp", "up", "gje-prop", "gje-simplex", "gje-xorsat" ]
 
     def test_trivial(self):
