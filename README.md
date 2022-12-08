@@ -7,6 +7,7 @@
 
 > A tool for solving ASP programs with XOR (parity) constraints towards generating (near-)uniform answer sets.
 > A fully re-implemented and extended version of the original `xorro` prototype is presented. This new version is built under `clingo` 5 infrastructure with Python support.
+> Currently working with clingo 5.4
 
 ## Description
 `xorro` is a tool that takes the advantage of the flexible ASP infrastructure

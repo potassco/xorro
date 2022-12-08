@@ -246,7 +246,7 @@ class Application:
         Building random parity constraints and configure clingo control
         """
         
-        if self.__sampling.value:
+        if self.__sampling.flag:
             selected = []
             requested_models = int(str(prg.configuration.solve.models))
             prg.configuration.solve.models = 0
@@ -263,7 +263,7 @@ class Application:
         """
         GJE preprocessing
         """
-        if self.__pre_gje.value:
+        if self.__pre_gje.flag:
             print("Performing GJE preprocessing")
             cl = _clingo.Control()
             xors_lits, xors_parities, all_lits = util.get_xors(cl, files)
